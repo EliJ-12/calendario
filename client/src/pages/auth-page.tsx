@@ -29,18 +29,18 @@ export default function AuthPage() {
           <div className="mx-auto w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center mb-4">
             <Briefcase className="w-6 h-6 text-primary" />
           </div>
-          <CardTitle className="text-2xl font-bold">Welcome back</CardTitle>
+          <CardTitle className="text-2xl font-bold">Bienvenido</CardTitle>
           <CardDescription>
-            Enter your credentials to access the portal
+            Ingresa tus credenciales para acceder
           </CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="username">Username</Label>
+              <Label htmlFor="username">Usuario</Label>
               <Input 
                 id="username" 
-                placeholder="j.doe" 
+                placeholder="admin" 
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 className="bg-muted/30"
@@ -48,7 +48,7 @@ export default function AuthPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">Contraseña</Label>
               <Input 
                 id="password" 
                 type="password" 
@@ -68,10 +68,10 @@ export default function AuthPage() {
               {loginMutation.isPending ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" /> 
-                  Signing in...
+                  Ingresando...
                 </>
               ) : (
-                "Sign In"
+                "Ingresar"
               )}
             </Button>
           </CardFooter>

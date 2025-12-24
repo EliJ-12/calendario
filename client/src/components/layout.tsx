@@ -23,25 +23,25 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
   const navItems = isAdmin
     ? [
-        { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
-        { href: "/admin/employees", label: "Employees", icon: Users },
-        { href: "/admin/work-logs", label: "Work Logs", icon: Briefcase },
-        { href: "/admin/absences", label: "Absences", icon: CalendarClock },
+        { href: "/admin", label: "Panel", icon: LayoutDashboard },
+        { href: "/admin/employees", label: "Empleados", icon: Users },
+        { href: "/admin/work-logs", label: "Registros de Horas", icon: Briefcase },
+        { href: "/admin/absences", label: "Ausencias", icon: CalendarClock },
       ]
     : [
-        { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
-        { href: "/dashboard/history", label: "Work History", icon: FileClock },
-        { href: "/dashboard/absences", label: "Absences", icon: CalendarClock },
+        { href: "/dashboard", label: "Mi Panel", icon: LayoutDashboard },
+        { href: "/dashboard/history", label: "Mis Horas", icon: FileClock },
+        { href: "/dashboard/absences", label: "Ausencias", icon: CalendarClock },
       ];
 
   const NavContent = () => (
     <div className="flex flex-col h-full">
       <div className="p-6 border-b border-border/50">
         <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-blue-600">
-          WorkTrack
+          Control Horario
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
-          {isAdmin ? "Admin Portal" : "Employee Portal"}
+          {isAdmin ? "Portal Administrador" : "Portal Empleado"}
         </p>
       </div>
 
@@ -81,7 +81,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           onClick={() => logoutMutation.mutate()}
         >
           <LogOut className="w-4 h-4" />
-          Sign Out
+          Salir
         </Button>
       </div>
     </div>
@@ -96,7 +96,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
       {/* Mobile Header */}
       <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-card border-b border-border z-40 flex items-center justify-between px-4">
-        <span className="font-bold text-lg text-primary">WorkTrack</span>
+        <span className="font-bold text-lg text-primary">Control Horario</span>
         <Button variant="ghost" size="icon" onClick={() => setMobileOpen(!mobileOpen)}>
           {mobileOpen ? <X /> : <Menu />}
         </Button>

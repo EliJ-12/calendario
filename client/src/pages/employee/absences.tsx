@@ -50,23 +50,23 @@ export default function EmployeeAbsences() {
     <Layout>
       <div className="space-y-8">
         <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold tracking-tight">Absence Requests</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Mis Solicitudes de Ausencia</h1>
           
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
               <Button>
-                <Plus className="mr-2 h-4 w-4" /> Request Absence
+                <Plus className="mr-2 h-4 w-4" /> Solicitar Ausencia
               </Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>New Request</DialogTitle>
-                <DialogDescription>Submit a request for time off.</DialogDescription>
+                <DialogTitle>Nueva Solicitud</DialogTitle>
+                <DialogDescription>Solicita permiso o tiempo libre.</DialogDescription>
               </DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-4 pt-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label>Start Date</Label>
+                    <Label>Fecha Inicio</Label>
                     <Input 
                       type="date" 
                       value={startDate} 
@@ -75,7 +75,7 @@ export default function EmployeeAbsences() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>End Date</Label>
+                    <Label>Fecha Fin</Label>
                     <Input 
                       type="date" 
                       value={endDate}
@@ -85,16 +85,16 @@ export default function EmployeeAbsences() {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label>Reason</Label>
+                  <Label>Motivo</Label>
                   <Textarea 
                     value={reason}
                     onChange={e => setReason(e.target.value)}
-                    placeholder="e.g. Doctor's appointment, Vacation..."
+                    placeholder="Ej: Cita médica, Vacaciones..."
                     required
                   />
                 </div>
                 <Button type="submit" className="w-full" disabled={createAbsence.isPending}>
-                  {createAbsence.isPending ? "Submitting..." : "Submit Request"}
+                  {createAbsence.isPending ? "Enviando..." : "Enviar Solicitud"}
                 </Button>
               </form>
             </DialogContent>
@@ -106,10 +106,10 @@ export default function EmployeeAbsences() {
             <table className="w-full text-sm">
               <thead className="bg-muted/50 border-b">
                 <tr className="text-left">
-                  <th className="p-4 font-medium text-muted-foreground">Start Date</th>
-                  <th className="p-4 font-medium text-muted-foreground">End Date</th>
-                  <th className="p-4 font-medium text-muted-foreground">Reason</th>
-                  <th className="p-4 font-medium text-muted-foreground">Status</th>
+                  <th className="p-4 font-medium text-muted-foreground">Fecha Inicio</th>
+                  <th className="p-4 font-medium text-muted-foreground">Fecha Fin</th>
+                  <th className="p-4 font-medium text-muted-foreground">Motivo</th>
+                  <th className="p-4 font-medium text-muted-foreground">Estado</th>
                 </tr>
               </thead>
               <tbody>
@@ -124,7 +124,7 @@ export default function EmployeeAbsences() {
                 {(!absences || absences.length === 0) && (
                   <tr>
                     <td colSpan={4} className="p-8 text-center text-muted-foreground">
-                      No absence requests found.
+                      No hay solicitudes de ausencia.
                     </td>
                   </tr>
                 )}

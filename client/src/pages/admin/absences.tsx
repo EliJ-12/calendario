@@ -17,21 +17,21 @@ export default function AdminAbsences() {
     <Layout>
       <div className="space-y-8">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Absence Management</h1>
-          <p className="text-muted-foreground mt-1">Review and approve employee time off requests.</p>
+          <h1 className="text-3xl font-bold tracking-tight">Gestión de Ausencias</h1>
+          <p className="text-muted-foreground mt-1">Revisa y aprueba las solicitudes de tiempo libre.</p>
         </div>
 
         <Tabs defaultValue="pending">
           <TabsList>
-            <TabsTrigger value="pending">Pending Requests ({pending.length})</TabsTrigger>
-            <TabsTrigger value="history">History</TabsTrigger>
+            <TabsTrigger value="pending">Solicitudes Pendientes ({pending.length})</TabsTrigger>
+            <TabsTrigger value="history">Historial</TabsTrigger>
           </TabsList>
           
           <TabsContent value="pending" className="mt-4">
             <div className="grid gap-4">
               {pending.length === 0 ? (
                 <div className="p-12 text-center border border-dashed rounded-lg">
-                  <p className="text-muted-foreground">No pending requests.</p>
+                  <p className="text-muted-foreground">No hay solicitudes pendientes.</p>
                 </div>
               ) : (
                 pending.map((absence) => (
@@ -56,7 +56,7 @@ export default function AdminAbsences() {
                         onClick={() => updateStatus.mutate({ id: absence.id, status: 'rejected' })}
                         disabled={updateStatus.isPending}
                       >
-                        <X className="w-4 h-4 mr-1" /> Reject
+                        <X className="w-4 h-4 mr-1" /> Rechazar
                       </Button>
                       <Button 
                         size="sm" 
@@ -64,7 +64,7 @@ export default function AdminAbsences() {
                         onClick={() => updateStatus.mutate({ id: absence.id, status: 'approved' })}
                         disabled={updateStatus.isPending}
                       >
-                        <Check className="w-4 h-4 mr-1" /> Approve
+                        <Check className="w-4 h-4 mr-1" /> Aprobar
                       </Button>
                     </div>
                   </div>
@@ -78,10 +78,10 @@ export default function AdminAbsences() {
               <table className="w-full text-sm">
                 <thead className="bg-muted/50 border-b">
                   <tr className="text-left">
-                    <th className="p-4 font-medium text-muted-foreground">Employee</th>
-                    <th className="p-4 font-medium text-muted-foreground">Date Range</th>
-                    <th className="p-4 font-medium text-muted-foreground">Reason</th>
-                    <th className="p-4 font-medium text-muted-foreground">Status</th>
+                    <th className="p-4 font-medium text-muted-foreground">Empleado</th>
+                    <th className="p-4 font-medium text-muted-foreground">Rango de Fechas</th>
+                    <th className="p-4 font-medium text-muted-foreground">Motivo</th>
+                    <th className="p-4 font-medium text-muted-foreground">Estado</th>
                   </tr>
                 </thead>
                 <tbody>

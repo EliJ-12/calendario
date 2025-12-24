@@ -46,22 +46,22 @@ export default function AdminEmployees() {
     <Layout>
       <div className="space-y-8">
         <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold tracking-tight">Employees</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Empleados</h1>
           
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
               <Button>
-                <UserPlus className="mr-2 h-4 w-4" /> Add Employee
+                <UserPlus className="mr-2 h-4 w-4" /> Nuevo Empleado
               </Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Create New User</DialogTitle>
-                <DialogDescription>Add a new employee or admin to the system.</DialogDescription>
+                <DialogTitle>Crear Nuevo Usuario</DialogTitle>
+                <DialogDescription>Agrega un nuevo empleado o administrador al sistema.</DialogDescription>
               </DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-4 pt-4">
                 <div className="space-y-2">
-                  <Label>Full Name</Label>
+                  <Label>Nombre Completo</Label>
                   <Input 
                     value={fullName}
                     onChange={e => setFullName(e.target.value)}
@@ -69,7 +69,7 @@ export default function AdminEmployees() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Username</Label>
+                  <Label>Usuario</Label>
                   <Input 
                     value={username}
                     onChange={e => setUsername(e.target.value)}
@@ -77,7 +77,7 @@ export default function AdminEmployees() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Password</Label>
+                  <Label>Contraseña</Label>
                   <Input 
                     type="password"
                     value={password}
@@ -86,19 +86,19 @@ export default function AdminEmployees() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Role</Label>
+                  <Label>Rol</Label>
                   <Select value={role} onValueChange={setRole}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="employee">Employee</SelectItem>
-                      <SelectItem value="admin">Admin</SelectItem>
+                      <SelectItem value="employee">Empleado</SelectItem>
+                      <SelectItem value="admin">Administrador</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <Button type="submit" className="w-full" disabled={createUser.isPending}>
-                  {createUser.isPending ? "Creating..." : "Create User"}
+                  {createUser.isPending ? "Creando..." : "Crear Usuario"}
                 </Button>
               </form>
             </DialogContent>
@@ -110,10 +110,10 @@ export default function AdminEmployees() {
             <table className="w-full text-sm">
               <thead className="bg-muted/50 border-b">
                 <tr className="text-left">
-                  <th className="p-4 font-medium text-muted-foreground">Full Name</th>
-                  <th className="p-4 font-medium text-muted-foreground">Username</th>
-                  <th className="p-4 font-medium text-muted-foreground">Role</th>
-                  <th className="p-4 font-medium text-muted-foreground">Joined</th>
+                  <th className="p-4 font-medium text-muted-foreground">Nombre</th>
+                  <th className="p-4 font-medium text-muted-foreground">Usuario</th>
+                  <th className="p-4 font-medium text-muted-foreground">Rol</th>
+                  <th className="p-4 font-medium text-muted-foreground">Creado</th>
                 </tr>
               </thead>
               <tbody>
@@ -127,7 +127,7 @@ export default function AdminEmployees() {
                           ? 'bg-purple-100 text-purple-700 border-purple-200' 
                           : 'bg-blue-100 text-blue-700 border-blue-200'
                       }`}>
-                        {user.role}
+                        {user.role === 'admin' ? 'Administrador' : 'Empleado'}
                       </span>
                     </td>
                     <td className="p-4 text-muted-foreground">

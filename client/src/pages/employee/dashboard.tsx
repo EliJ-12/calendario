@@ -1,5 +1,5 @@
 import { useAuth } from "@/hooks/use-auth";
-import { useWorkLogs, useCreateWorkLog } from "@/hooks/use-work-logs";
+import { useWorkLogs, useCreateWorkLog, useUpdateWorkLog } from "@/hooks/use-work-logs";
 import { useAbsences } from "@/hooks/use-absences";
 import Layout from "@/components/layout";
 import { StatsCard } from "@/components/stats-card";
@@ -18,6 +18,7 @@ import { Label } from "@/components/ui/label";
 import { useState } from "react";
 import { format, startOfMonth, endOfMonth, differenceInMinutes, parse } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function EmployeeDashboard() {
   const { user } = useAuth();
@@ -60,8 +61,8 @@ export default function EmployeeDashboard() {
 
     if (diff <= 0) {
       toast({
-        title: "Invalid time range",
-        description: "End time must be after start time",
+        title: "Rango de tiempo inválido",
+        description: "La hora de salida debe ser posterior a la de entrada",
         variant: "destructive"
       });
       return;
@@ -87,28 +88,28 @@ export default function EmployeeDashboard() {
       <div className="space-y-8">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+            <h1 className="text-3xl font-bold tracking-tight">Mi Panel</h1>
             <p className="text-muted-foreground mt-1">
-              Welcome back, {user?.fullName}. Here's your month at a glance.
+              Bienvenido, {user?.fullName}. Aquí está tu resumen del mes.
             </p>
           </div>
           
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
               <Button size="lg" className="shadow-lg shadow-primary/20">
-                <Plus className="mr-2 h-4 w-4" /> Log Hours
+                <Plus className="mr-2 h-4 w-4" /> Registrar Horas
               </Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Log Work Hours</DialogTitle>
+                <DialogTitle>Registrar Horas de Trabajo</DialogTitle>
                 <DialogDescription>
-                  Record your work hours for today.
+                  Registra tus horas de trabajo
                 </DialogDescription>
               </DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-4 pt-4">
                 <div className="space-y-2">
-                  <Label>Date</Label>
+                  <Label>Fecha</Label>
                   <Input 
                     type="date" 
                     value={date} 
@@ -118,7 +119,7 @@ export default function EmployeeDashboard() {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label>Start Time</Label>
+                    <Label>Hora Entrada</Label>
                     <Input 
                       type="time" 
                       value={startTime}
@@ -127,7 +128,7 @@ export default function EmployeeDashboard() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>End Time</Label>
+                    <Label>Hora Salida</Label>
                     <Input 
                       type="time" 
                       value={endTime}
@@ -137,65 +138,88 @@ export default function EmployeeDashboard() {
                   </div>
                 </div>
                 <Button type="submit" className="w-full" disabled={createLog.isPending}>
-                  {createLog.isPending ? "Saving..." : "Save Log"}
+                  {createLog.isPending ? "Guardando..." : "Guardar"}
                 </Button>
               </form>
             </DialogContent>
           </Dialog>
         </div>
 
+        {/* Stats Cards */}
         <div className="grid gap-4 md:grid-cols-3">
           <StatsCard
-            title="Hours this Month"
+            title="Horas este Mes"
             value={`${hours}h ${minutes}m`}
             icon={Clock}
-            description="Total logged time"
+            description="Tiempo registrado"
             className="border-primary/20 bg-primary/5"
           />
           <StatsCard
-            title="Pending Absences"
+            title="Ausencias Pendientes"
             value={absences?.length || 0}
             icon={CalendarOff}
-            description="Awaiting approval"
+            description="Esperando aprobación"
           />
           <StatsCard
-            title="Work Days"
+            title="Días de Trabajo"
             value={logs?.length || 0}
             icon={Activity}
-            description="Days active this month"
+            description="Días activos este mes"
           />
         </div>
 
-        <div className="grid gap-6 md:grid-cols-2">
-          {/* Recent Logs List */}
-          <div className="rounded-xl border bg-card text-card-foreground shadow-sm">
-            <div className="p-6 border-b border-border/50">
-              <h3 className="font-semibold leading-none tracking-tight">Recent Logs</h3>
+        {/* Work Logs Table */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Mis Registros de Horas</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="rounded-md border overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/50 border-b">
+                    <tr className="text-left">
+                      <th className="p-4 font-medium text-muted-foreground">Fecha</th>
+                      <th className="p-4 font-medium text-muted-foreground">Entrada</th>
+                      <th className="p-4 font-medium text-muted-foreground">Salida</th>
+                      <th className="p-4 font-medium text-muted-foreground">Duración</th>
+                      <th className="p-4 font-medium text-muted-foreground">Estado</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {logs && logs.length > 0 ? (
+                      logs.map((log) => (
+                        <tr key={log.id} className="border-b last:border-0 hover:bg-muted/20 transition-colors">
+                          <td className="p-4">{format(new Date(log.date), 'dd/MM/yyyy')}</td>
+                          <td className="p-4">{log.startTime}</td>
+                          <td className="p-4">{log.endTime}</td>
+                          <td className="p-4 font-medium">{Math.floor(log.totalHours / 60)}h {log.totalHours % 60}m</td>
+                          <td className="p-4">
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                              log.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+                              log.status === 'approved' ? 'bg-green-100 text-green-700' :
+                              'bg-red-100 text-red-700'
+                            }`}>
+                              {log.status === 'pending' ? 'Pendiente' :
+                               log.status === 'approved' ? 'Aprobado' :
+                               'Rechazado'}
+                            </span>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={5} className="p-8 text-center text-muted-foreground">
+                          No hay registros para este mes
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
-            <div className="p-6">
-              {logs && logs.length > 0 ? (
-                <div className="space-y-4">
-                  {logs.slice(0, 5).map((log) => (
-                    <div key={log.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
-                      <div className="flex items-center gap-3">
-                        <div className="h-2 w-2 rounded-full bg-primary" />
-                        <div>
-                          <p className="font-medium">{format(new Date(log.date), "MMM d, yyyy")}</p>
-                          <p className="text-xs text-muted-foreground">{log.startTime} - {log.endTime}</p>
-                        </div>
-                      </div>
-                      <div className="font-mono text-sm font-medium">
-                        {Math.floor(log.totalHours / 60)}h {log.totalHours % 60}m
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">No logs found for this month.</p>
-              )}
-            </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       </div>
     </Layout>
   );
