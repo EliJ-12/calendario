@@ -19,10 +19,7 @@ import { format } from "date-fns";
 export default function AdminEmployees() {
   const { data: users } = useUsers();
   const createUser = useCreateUser();
-  const deleteUser = useDeleteUser();
-  const updateUser = useUpdateUser();
   const [open, setOpen] = useState(false);
-  const [editingUser, setEditingUser] = useState<any>(null);
 
   // Form State
   const [username, setUsername] = useState("");
@@ -32,47 +29,17 @@ export default function AdminEmployees() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (editingUser) {
-      await updateUser.mutateAsync({
-        id: editingUser.id,
-        username,
-        fullName,
-        role: role as any,
-        ...(password ? { password } : {})
-      });
-    } else {
-      await createUser.mutateAsync({
-        username,
-        password,
-        fullName,
-        role: role as "admin" | "employee"
-      });
-    }
+    await createUser.mutateAsync({
+      username,
+      password,
+      fullName,
+      role: role as "admin" | "employee"
+    });
     setOpen(false);
-    resetForm();
-  };
-
-  const resetForm = () => {
-    setEditingUser(null);
     setUsername("");
     setPassword("");
     setFullName("");
     setRole("employee");
-  };
-
-  const handleEdit = (user: any) => {
-    setEditingUser(user);
-    setUsername(user.username);
-    setPassword("");
-    setFullName(user.fullName);
-    setRole(user.role);
-    setOpen(true);
-  };
-
-  const handleDelete = async (id: number) => {
-    if (confirm("¿Estás seguro de que deseas eliminar este usuario?")) {
-      await deleteUser.mutateAsync(id);
-    }
   };
 
   return (
@@ -81,18 +48,16 @@ export default function AdminEmployees() {
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-bold tracking-tight">Empleados</h1>
           
-          <Dialog open={open} onOpenChange={(val) => { setOpen(val); if(!val) resetForm(); }}>
+          <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-              <Button onClick={resetForm}>
+              <Button>
                 <UserPlus className="mr-2 h-4 w-4" /> Nuevo Empleado
               </Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>{editingUser ? "Editar Usuario" : "Crear Nuevo Usuario"}</DialogTitle>
-                <DialogDescription>
-                  {editingUser ? "Modifica los datos del usuario." : "Agrega un nuevo empleado o administrador al sistema."}
-                </DialogDescription>
+                <DialogTitle>Crear Nuevo Usuario</DialogTitle>
+                <DialogDescription>Agrega un nuevo empleado o administrador al sistema.</DialogDescription>
               </DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-4 pt-4">
                 <div className="space-y-2">
@@ -112,12 +77,12 @@ export default function AdminEmployees() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Contraseña {editingUser && "(dejar en blanco para no cambiar)"}</Label>
+                  <Label>Contraseña</Label>
                   <Input 
                     type="password"
                     value={password}
                     onChange={e => setPassword(e.target.value)}
-                    required={!editingUser}
+                    required
                   />
                 </div>
                 <div className="space-y-2">
@@ -132,8 +97,8 @@ export default function AdminEmployees() {
                     </SelectContent>
                   </Select>
                 </div>
-                <Button type="submit" className="w-full" disabled={createUser.isPending || updateUser.isPending}>
-                  {createUser.isPending || updateUser.isPending ? "Procesando..." : (editingUser ? "Actualizar Usuario" : "Crear Usuario")}
+                <Button type="submit" className="w-full" disabled={createUser.isPending}>
+                  {createUser.isPending ? "Creando..." : "Crear Usuario"}
                 </Button>
               </form>
             </DialogContent>
@@ -170,8 +135,8 @@ export default function AdminEmployees() {
                       {user.createdAt ? format(new Date(user.createdAt), 'dd/MM/yyyy') : '-'}
                     </td>
                     <td className="p-4 flex gap-2">
-                       <Button variant="ghost" size="sm" onClick={() => handleEdit(user)}>Editar</Button>
-                       <Button variant="ghost" size="sm" className="text-red-600" onClick={() => handleDelete(user.id)}>Eliminar</Button>
+                       <Button variant="ghost" size="sm" onClick={() => {/* TODO: Implement Edit */}}>Editar</Button>
+                       <Button variant="ghost" size="sm" className="text-red-600" onClick={() => {/* TODO: Implement Delete */}}>Eliminar</Button>
                     </td>
                   </tr>
                 ))}

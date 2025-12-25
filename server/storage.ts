@@ -1,6 +1,6 @@
 import { users, workLogs, absences, type User, type InsertUser, type WorkLog, type InsertWorkLog, type Absence, type InsertAbsence } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, gte, lte, desc } from "drizzle-orm";
+import { eq, and, gte, lte } from "drizzle-orm";
 
 export interface IStorage {
   // User operations
@@ -55,7 +55,7 @@ export class DatabaseStorage implements IStorage {
         startTime: workLogs.startTime,
         endTime: workLogs.endTime,
         totalHours: workLogs.totalHours,
-        type: workLogs.type,
+        status: workLogs.status,
         createdAt: workLogs.createdAt,
         user: users,
       })
@@ -69,10 +69,10 @@ export class DatabaseStorage implements IStorage {
 
     if (conditions.length > 0) {
       // @ts-ignore - drizzle types can be tricky with dynamic where
-      return await query.where(and(...conditions)).orderBy(desc(workLogs.date));
+      return await query.where(and(...conditions)).orderBy(workLogs.date);
     }
     
-    return await query.orderBy(desc(workLogs.date));
+    return await query.orderBy(workLogs.date);
   }
 
   async getWorkLog(id: number): Promise<WorkLog | undefined> {
@@ -98,9 +98,6 @@ export class DatabaseStorage implements IStorage {
         endDate: absences.endDate,
         reason: absences.reason,
         status: absences.status,
-        fileUrl: absences.fileUrl,
-        isPartial: absences.isPartial,
-        partialHours: absences.partialHours,
         createdAt: absences.createdAt,
         user: users
       })
@@ -113,10 +110,10 @@ export class DatabaseStorage implements IStorage {
 
     if (conditions.length > 0) {
       // @ts-ignore
-      return await query.where(and(...conditions)).orderBy(desc(absences.startDate));
+      return await query.where(and(...conditions)).orderBy(absences.startDate);
     }
 
-    return await query.orderBy(desc(absences.startDate));
+    return await query.orderBy(absences.startDate);
   }
 
   async getAbsence(id: number): Promise<Absence | undefined> {
