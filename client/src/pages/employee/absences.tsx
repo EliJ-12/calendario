@@ -45,7 +45,12 @@ export default function EmployeeAbsences() {
       reason,
       status: "pending",
       isPartial,
-      partialHours: isPartial ? Number(partialHours) * 60 : null,
+      partialHours: isPartial ? (startTime && endTime ? 
+        (() => {
+          const [sH, sM] = startTime.split(':').map(Number);
+          const [eH, eM] = endTime.split(':').map(Number);
+          return (eH * 60 + eM) - (sH * 60 + sM);
+        })() : null) : null,
       fileUrl: null 
     });
     setOpen(false);
