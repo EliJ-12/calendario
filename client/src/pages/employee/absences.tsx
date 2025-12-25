@@ -28,6 +28,8 @@ export default function EmployeeAbsences() {
   const [reason, setReason] = useState("");
   const [isPartial, setIsPartial] = useState(false);
   const [partialHours, setPartialHours] = useState("");
+  const [startTime, setStartTime] = useState("09:00");
+  const [endTime, setEndTime] = useState("13:00");
 
   const { data: absences } = useAbsences({ userId: user?.id });
   const createAbsence = useCreateAbsence();
@@ -44,7 +46,7 @@ export default function EmployeeAbsences() {
       status: "pending",
       isPartial,
       partialHours: isPartial ? Number(partialHours) * 60 : null,
-      fileUrl: null // Placeholder for file upload logic
+      fileUrl: null 
     });
     setOpen(false);
   };
@@ -58,13 +60,13 @@ export default function EmployeeAbsences() {
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
               <Button>
-                <Plus className="mr-2 h-4 w-4" /> Nueva Ausencia
+                <Plus className="mr-2 h-4 w-4" /> Ausencia
               </Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>Registrar Ausencia</DialogTitle>
-                <DialogDescription>Indica el motivo y duración de tu ausencia.</DialogDescription>
+                <DialogDescription>Indica el motivo y horario de tu ausencia.</DialogDescription>
               </DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-4 pt-4">
                 <div className="flex items-center space-x-2 pb-2 border-b">
@@ -72,23 +74,28 @@ export default function EmployeeAbsences() {
                   <Label htmlFor="partial">Ausencia Parcial (Unas horas)</Label>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>{isPartial ? 'Fecha' : 'Fecha Inicio'}</Label>
-                    <Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} required />
-                  </div>
-                  {!isPartial ? (
-                    <div className="space-y-2">
-                      <Label>Fecha Fin</Label>
-                      <Input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} required />
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      <Label>Horas de Ausencia</Label>
-                      <Input type="number" placeholder="Ej: 4" value={partialHours} onChange={e => setPartialHours(e.target.value)} required />
-                    </div>
-                  )}
+                <div className="space-y-2">
+                  <Label>Fecha</Label>
+                  <Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} required />
                 </div>
+
+                {!isPartial ? (
+                  <div className="space-y-2">
+                    <Label>Hasta Fecha (opcional)</Label>
+                    <Input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} />
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Hora Inicio</Label>
+                      <Input type="time" value={startTime} onChange={e => setStartTime(e.target.value)} required />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Hora Fin</Label>
+                      <Input type="time" value={endTime} onChange={e => setEndTime(e.target.value)} required />
+                    </div>
+                  </div>
+                )}
 
                 <div className="space-y-2">
                   <Label>Adjuntar Documento (Opcional)</Label>

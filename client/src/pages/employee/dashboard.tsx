@@ -19,6 +19,7 @@ import { Label } from "@/components/ui/label";
 export default function EmployeeDashboard() {
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
+  const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   
   const today = new Date();
   const monthStart = startOfMonth(today);
@@ -46,7 +47,7 @@ export default function EmployeeDashboard() {
 
     await createLog.mutateAsync({
       userId: user.id,
-      date: format(new Date(), 'yyyy-MM-dd'),
+      date,
       startTime: regStartTime,
       endTime: regEndTime,
       totalHours: diff > 0 ? diff : 480,
@@ -67,14 +68,18 @@ export default function EmployeeDashboard() {
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
               <Button size="lg" className="shadow-lg shadow-primary/20">
-                <Clock className="mr-2 h-4 w-4" /> Fichar Hoy
+                <Clock className="mr-2 h-4 w-4" /> Registrar Horas
               </Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Fichar Jornada</DialogTitle>
+                <DialogTitle>Registrar Jornada</DialogTitle>
               </DialogHeader>
               <form onSubmit={handleFichar} className="space-y-4 pt-4">
+                <div className="space-y-2">
+                  <Label>Fecha</Label>
+                  <Input type="date" value={date} onChange={e => setDate(e.target.value)} required />
+                </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Entrada</Label>
@@ -85,7 +90,7 @@ export default function EmployeeDashboard() {
                     <Input type="time" value={regEndTime} onChange={e => setRegEndTime(e.target.value)} required />
                   </div>
                 </div>
-                <Button type="submit" className="w-full">Confirmar Fichaje</Button>
+                <Button type="submit" className="w-full">Guardar Registro</Button>
               </form>
             </DialogContent>
           </Dialog>

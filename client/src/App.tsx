@@ -10,6 +10,7 @@ import { Loader2 } from "lucide-react";
 import AuthPage from "@/pages/auth-page";
 import EmployeeDashboard from "@/pages/employee/dashboard";
 import EmployeeAbsences from "@/pages/employee/absences";
+import EmployeeWorkHistory from "@/pages/employee/history";
 import AdminDashboard from "@/pages/admin/dashboard";
 import AdminEmployees from "@/pages/admin/employees";
 import AdminAbsences from "@/pages/admin/absences";
@@ -53,8 +54,7 @@ function Router() {
         <ProtectedRoute component={EmployeeDashboard} allowedRoles={['employee']} />
       </Route>
       <Route path="/dashboard/history">
-         {/* Reusing dashboard but could be separate page if needed */}
-        <ProtectedRoute component={EmployeeDashboard} allowedRoles={['employee']} />
+        <ProtectedRoute component={EmployeeWorkHistory} allowedRoles={['employee']} />
       </Route>
       <Route path="/dashboard/absences">
         <ProtectedRoute component={EmployeeAbsences} allowedRoles={['employee']} />
