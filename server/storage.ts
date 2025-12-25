@@ -55,7 +55,7 @@ export class DatabaseStorage implements IStorage {
         startTime: workLogs.startTime,
         endTime: workLogs.endTime,
         totalHours: workLogs.totalHours,
-        status: workLogs.status,
+        type: workLogs.type,
         createdAt: workLogs.createdAt,
         user: users,
       })
@@ -68,11 +68,10 @@ export class DatabaseStorage implements IStorage {
     if (endDate) conditions.push(lte(workLogs.date, endDate));
 
     if (conditions.length > 0) {
-      // @ts-ignore - drizzle types can be tricky with dynamic where
-      return await query.where(and(...conditions)).orderBy(workLogs.date);
+      return await query.where(and(...conditions)).orderBy(workLogs.date) as (WorkLog & { user: User })[];
     }
     
-    return await query.orderBy(workLogs.date);
+    return await query.orderBy(workLogs.date) as (WorkLog & { user: User })[];
   }
 
   async getWorkLog(id: number): Promise<WorkLog | undefined> {
@@ -98,6 +97,9 @@ export class DatabaseStorage implements IStorage {
         endDate: absences.endDate,
         reason: absences.reason,
         status: absences.status,
+        fileUrl: absences.fileUrl,
+        isPartial: absences.isPartial,
+        partialHours: absences.partialHours,
         createdAt: absences.createdAt,
         user: users
       })
@@ -109,11 +111,10 @@ export class DatabaseStorage implements IStorage {
     if (status) conditions.push(eq(absences.status, status));
 
     if (conditions.length > 0) {
-      // @ts-ignore
-      return await query.where(and(...conditions)).orderBy(absences.startDate);
+      return await query.where(and(...conditions)).orderBy(absences.startDate) as (Absence & { user: User })[];
     }
 
-    return await query.orderBy(absences.startDate);
+    return await query.orderBy(absences.startDate) as (Absence & { user: User })[];
   }
 
   async getAbsence(id: number): Promise<Absence | undefined> {

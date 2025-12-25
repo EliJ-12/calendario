@@ -17,7 +17,7 @@ export const users = pgTable("users", {
 export const workLogs = pgTable("work_logs", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").references(() => users.id).notNull(),
-  date: date("date").notNull(), // YYYY-MM-DD
+  date: text("date").notNull(), // YYYY-MM-DD
   startTime: text("start_time").notNull(), // HH:mm
   endTime: text("end_time").notNull(), // HH:mm
   totalHours: integer("total_hours").notNull(), // stored in minutes
@@ -28,8 +28,8 @@ export const workLogs = pgTable("work_logs", {
 export const absences = pgTable("absences", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").references(() => users.id).notNull(),
-  startDate: date("start_date").notNull(),
-  endDate: date("end_date").notNull(),
+  startDate: text("start_date").notNull(),
+  endDate: text("end_date").notNull(),
   reason: text("reason").notNull(),
   status: text("status", { enum: ["pending", "approved", "rejected"] }).default("pending"),
   fileUrl: text("file_url"),
