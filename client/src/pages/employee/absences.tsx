@@ -18,6 +18,7 @@ import { useState } from "react";
 import { format } from "date-fns";
 import { Plus, FileUp, Pencil, Trash2 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
+import SupabaseStorage from "@/components/supabase-storage";
 
 export default function EmployeeAbsences() {
   const { user } = useAuth();
@@ -231,6 +232,9 @@ export default function EmployeeAbsences() {
             </DialogContent>
           </Dialog>
         </div>
+
+        {/* File Storage Section */}
+        <SupabaseStorage userId={user?.id} isAdmin={false} />
 
         <div className="rounded-md border bg-card shadow-sm overflow-hidden">
           <div className="overflow-x-auto">

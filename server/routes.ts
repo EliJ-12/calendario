@@ -56,6 +56,39 @@ export async function registerRoutes(
     }
   });
 
+  // File listing endpoint for absence files
+  app.get('/api/files/absence-files', async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    try {
+      const user = req.user as any;
+      
+      // For now, return mock data. In production, integrate with Supabase Storage
+      // This would list files from the 'absence-files' bucket with proper filtering
+      const mockFiles = [
+        {
+          name: 'justificacion.pdf',
+          url: 'https://mock-url.com/absence-files/1/justificacion.pdf',
+          type: 'application/pdf',
+          size: 1024000,
+          userId: 1,
+          createdAt: new Date().toISOString()
+        }
+      ];
+
+      // If admin, return all files; if employee, return only their files
+      const filteredFiles = user.role === 'admin' 
+        ? mockFiles 
+        : mockFiles.filter(file => file.userId === user.id);
+
+      res.json(filteredFiles);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to list files" });
+    }
+  });
+
   // === User Management (Admin Only ideally, but open for now for setup) ===
   app.get(api.users.list.path, async (req, res) => {
     if (!req.isAuthenticated() || (req.user as any).role !== 'admin') {

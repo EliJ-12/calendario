@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import { Check, X, FileUp } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import SupabaseStorage from "@/components/supabase-storage";
 
 export default function AdminAbsences() {
   const { data: absences } = useAbsences();
@@ -25,6 +26,7 @@ export default function AdminAbsences() {
           <TabsList>
             <TabsTrigger value="pending">Solicitudes Pendientes ({pending.length})</TabsTrigger>
             <TabsTrigger value="history">Historial</TabsTrigger>
+            <TabsTrigger value="files">Archivos</TabsTrigger>
           </TabsList>
           
           <TabsContent value="pending" className="mt-4">
@@ -114,6 +116,10 @@ export default function AdminAbsences() {
                 </tbody>
               </table>
             </div>
+          </TabsContent>
+
+          <TabsContent value="files" className="mt-4">
+            <SupabaseStorage isAdmin={true} />
           </TabsContent>
         </Tabs>
       </div>
