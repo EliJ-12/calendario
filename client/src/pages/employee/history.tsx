@@ -5,12 +5,13 @@ import Layout from "@/components/layout";
 import { format, startOfMonth, endOfMonth } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Pencil, Trash2, Check, X, CalendarClock, Filter } from "lucide-react";
+import { Pencil, Trash2, Check, X, CalendarClock, Filter, Download } from "lucide-react";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import * as XLSX from 'xlsx';
 
 export default function EmployeeWorkHistory() {
   const { user } = useAuth();
@@ -42,6 +43,21 @@ export default function EmployeeWorkHistory() {
 
   const updateLog = useUpdateWorkLog();
   const deleteLog = useDeleteWorkLog();
+
+  const downloadExcel = () => {
+    const worksheet = XLSX.utils.json_to_sheet(allEvents.map(event => ({
+      'Fecha': format(new Date(event.date), 'dd/MM/yyyy'),
+      'Tipo': event.type === 'work' ? 'Trabajo' : 'Ausencia',
+      'Entrada': event.startTime || '-',
+      'Salida': event.endTime || '-',
+      'Duración': event.totalHours ? `${Math.floor(event.totalHours / 60)}h ${event.totalHours % 60}m` : '-'
+    })));
+    
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Mis Horas');
+    
+    XLSX.writeFile(workbook, `mis-horas-${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
+  };
 
   const handleEdit = (log: any) => {
     setEditingId(log.id);
@@ -83,10 +99,16 @@ export default function EmployeeWorkHistory() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle>Todos los Registros</CardTitle>
-              <Button variant="outline" size="sm" className="flex items-center gap-2">
-                <Filter className="h-4 w-4" />
-                Filtros
-              </Button>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" className="flex items-center gap-2" onClick={downloadExcel}>
+                  <Download className="h-4 w-4" />
+                  Descargar Excel
+                </Button>
+                <Button variant="outline" size="sm" className="flex items-center gap-2">
+                  <Filter className="h-4 w-4" />
+                  Filtros
+                </Button>
+              </div>
             </div>
             <div className="flex flex-wrap gap-4 pt-2">
               <div className="space-y-2">

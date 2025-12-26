@@ -2,7 +2,7 @@ import { useWorkLogs, useCreateWorkLog } from "@/hooks/use-work-logs";
 import { useUsers } from "@/hooks/use-users";
 import Layout from "@/components/layout";
 import { StatsCard } from "@/components/stats-card";
-import { Users, Briefcase, Clock, TrendingUp, Plus, Calendar as CalendarIcon, ChevronLeft, ChevronRight } from "lucide-react";
+import { Users, Briefcase, Clock, TrendingUp, Plus, Calendar as CalendarIcon, ChevronLeft, ChevronRight, Download } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import * as XLSX from 'xlsx';
 
 export default function AdminDashboard() {
   const { data: logs } = useWorkLogs();
@@ -60,6 +61,20 @@ export default function AdminDashboard() {
 
   const handlePrev = () => setCurrentDate(prev => subMonths(prev, 1));
   const handleNext = () => setCurrentDate(prev => addMonths(prev, 1));
+
+  const downloadExcel = () => {
+    const worksheet = XLSX.utils.json_to_sheet(filteredLogs.map(log => ({
+      'Empleado': log.user?.fullName || '-',
+      'Fecha': format(new Date(log.date), 'dd/MM/yyyy'),
+      'Tipo': log.type === 'work' ? 'Trabajo' : 'Ausencia',
+      'Duración': log.totalHours ? `${Math.floor(log.totalHours / 60)}h ${log.totalHours % 60}m` : '-'
+    })));
+    
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Registros de Horas');
+    
+    XLSX.writeFile(workbook, `registros-horas-${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
+  };
 
   const handleManualSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -209,6 +224,10 @@ export default function AdminDashboard() {
              <Card>
                 <CardHeader className="flex flex-row items-center justify-between">
                   <CardTitle>Histórico de Registros</CardTitle>
+                  <Button variant="outline" size="sm" className="flex items-center gap-2" onClick={downloadExcel}>
+                    <Download className="h-4 w-4" />
+                    Descargar Excel
+                  </Button>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="mb-4 p-4 bg-muted/30 rounded-lg">
