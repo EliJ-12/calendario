@@ -7,10 +7,10 @@ import { setupAuth } from "./auth.js";
 import { api } from "../shared/routes.js";
 import { z } from "zod";
 import { insertUserSchema, insertWorkLogSchema, insertAbsenceSchema } from "../shared/schema.js";
-
 import { db } from "./db.js";
 import { users, workLogs } from "../shared/schema.js";
 import { eq, and, gte, lte } from "drizzle-orm";
+import { uploadToSupabase } from "./supabase";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -46,33 +46,13 @@ export async function registerRoutes(
     }
 
     try {
-      const { supabase } = require('./lib/supabase');
+      const userId = (req.user as any).id;
+      const fileUrl = await uploadToSupabase(req.file, userId);
       
-      // Generar nombre único para el archivo
-      const fileName = Date.now() + '-' + req.file.originalname;
-
-      // Subir a Supabase Storage
-      const { data, error } = await supabase.storage
-        .from('absence-files')
-        .upload(fileName, req.file.buffer, {
-          contentType: req.file.mimetype,
-          upsert: false
-        });
-
-      if (error) {
-        throw new Error('Error al subir archivo: ' + error.message);
-      }
-
-      // Obtener URL pública del archivo
-      const { data: urlData } = supabase.storage
-        .from('absence-files')
-        .getPublicUrl(fileName);
-
-      const documentUrl = urlData.publicUrl;
-      
-      res.json({ fileUrl: documentUrl });
+      res.json({ fileUrl });
     } catch (error) {
-      res.status(500).json({ message: (error as Error).message || "Failed to upload file" });
+      console.error('Upload error:', error);
+      res.status(500).json({ message: "Failed to upload file" });
     }
   });
 
