@@ -7,6 +7,7 @@ import { setupAuth } from "./auth.js";
 import { api } from "../shared/routes.js";
 import { z } from "zod";
 import { insertUserSchema, insertWorkLogSchema, insertAbsenceSchema } from "../shared/schema.js";
+import { createClient } from '@supabase/supabase-js';
 
 import { db } from "./db.js";
 import { users, workLogs } from "../shared/schema.js";
@@ -18,6 +19,12 @@ export async function registerRoutes(
 ): Promise<Server> {
   // Setup Auth
   const { hashPassword } = await setupAuth(app);
+
+  // Initialize Supabase client
+  const supabase = createClient(
+    process.env.SUPABASE_URL || '',
+    process.env.SUPABASE_SERVICE_ROLE_KEY || ''
+  );
 
   // Configure multer for file uploads
   const upload = multer({
@@ -35,7 +42,7 @@ export async function registerRoutes(
     }
   });
 
-  // File upload endpoint
+  // File upload endpoint with Supabase Storage
   app.post('/api/upload', upload.single('file'), async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).json({ message: "Unauthorized" });
@@ -47,11 +54,37 @@ export async function registerRoutes(
 
     try {
       const userId = (req.user as any).id;
-      const fileName = req.file.originalname;
-      const fileUrl = `absence-files/${userId}/${fileName}`;
+      const originalName = req.file.originalname;
       
-      res.json({ fileUrl });
+      // Clean file name: replace spaces with hyphens, remove special characters
+      const cleanFileName = originalName
+        .replace(/\s+/g, '-')
+        .replace(/[^a-zA-Z0-9.-]/g, '');
+      
+      // Create organized path with user folder and timestamp
+      const timestamp = Date.now();
+      const filePath = `${userId}/${timestamp}-${cleanFileName}`;
+      
+      // Upload to Supabase Storage
+      const { data, error } = await supabase.storage
+        .from('absence-files')
+        .upload(filePath, req.file.buffer, {
+          contentType: req.file.mimetype,
+          upsert: false
+        });
+
+      if (error) {
+        throw new Error('Failed to upload file to Supabase Storage');
+      }
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('absence-files')
+        .getPublicUrl(filePath);
+
+      res.json({ fileUrl: publicUrl });
     } catch (error) {
+      console.error('Upload error:', error);
       res.status(500).json({ message: "Failed to upload file" });
     }
   });

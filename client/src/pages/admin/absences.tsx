@@ -47,6 +47,19 @@ export default function AdminAbsences() {
                       <p className="text-sm bg-muted/50 p-3 rounded-md max-w-xl">
                         "{absence.reason}"
                       </p>
+                      {absence.fileUrl && (
+                        <div className="mt-2">
+                          <a 
+                            href={absence.fileUrl} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:text-blue-800 underline flex items-center gap-1 text-sm"
+                          >
+                            <FileUp className="h-4 w-4" />
+                            Ver documento
+                          </a>
+                        </div>
+                      )}
                     </div>
                     <div className="flex gap-2">
                       <Button 
