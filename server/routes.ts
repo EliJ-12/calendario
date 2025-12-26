@@ -7,7 +7,6 @@ import { setupAuth } from "./auth.js";
 import { api } from "../shared/routes.js";
 import { z } from "zod";
 import { insertUserSchema, insertWorkLogSchema, insertAbsenceSchema } from "../shared/schema.js";
-import { uploadFileToSupabase, getPublicUrl } from "./supabase-storage.js";
 
 import { db } from "./db.js";
 import { users, workLogs } from "../shared/schema.js";
@@ -49,32 +48,11 @@ export async function registerRoutes(
     try {
       const userId = (req.user as any).id;
       const fileName = req.file.originalname;
-      const filePath = `${userId}/${fileName}`;
-      
-      console.log(`Uploading file: ${fileName} for user: ${userId} to path: ${filePath}`);
-      
-      // Upload to Supabase Storage
-      const uploadData = await uploadFileToSupabase(
-        'absence-files',
-        filePath,
-        req.file.buffer,
-        req.file.mimetype
-      );
-      
-      console.log('Upload successful:', uploadData);
-      
-      // Get public URL
-      const fileUrl = getPublicUrl('absence-files', filePath);
-      
-      console.log('File URL:', fileUrl);
+      const fileUrl = `absence-files/${userId}/${fileName}`;
       
       res.json({ fileUrl });
     } catch (error) {
-      console.error('File upload error:', error);
-      res.status(500).json({ 
-        message: "Failed to upload file",
-        error: error instanceof Error ? error.message : 'Unknown error'
-      });
+      res.status(500).json({ message: "Failed to upload file" });
     }
   });
 
