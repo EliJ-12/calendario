@@ -3,7 +3,7 @@ import Layout from "@/components/layout";
 import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
-import { Check, X } from "lucide-react";
+import { Check, X, FileUp } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function AdminAbsences() {
@@ -81,6 +81,7 @@ export default function AdminAbsences() {
                     <th className="p-4 font-medium text-muted-foreground">Empleado</th>
                     <th className="p-4 font-medium text-muted-foreground">Rango de Fechas</th>
                     <th className="p-4 font-medium text-muted-foreground">Motivo</th>
+                    <th className="p-4 font-medium text-muted-foreground">Documento</th>
                     <th className="p-4 font-medium text-muted-foreground">Estado</th>
                   </tr>
                 </thead>
@@ -92,6 +93,21 @@ export default function AdminAbsences() {
                         {format(new Date(absence.startDate), 'MMM d')} — {format(new Date(absence.endDate), 'MMM d, yyyy')}
                       </td>
                       <td className="p-4 max-w-xs truncate">{absence.reason}</td>
+                      <td className="p-4">
+                        {absence.fileUrl ? (
+                          <a 
+                            href={absence.fileUrl} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:text-blue-800 underline flex items-center gap-1"
+                          >
+                            <FileUp className="h-4 w-4" />
+                            Ver documento
+                          </a>
+                        ) : (
+                          <span className="text-muted-foreground">-</span>
+                        )}
+                      </td>
                       <td className="p-4"><StatusBadge status={absence.status || 'pending'} /></td>
                     </tr>
                   ))}

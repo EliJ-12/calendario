@@ -188,6 +188,7 @@ export default function EmployeeDashboard() {
                 <div key={d} className="bg-background p-2 text-center text-xs font-medium text-muted-foreground">{d}</div>
               ))}
               {days.map(day => {
+                // Filter work logs to exclude 'absence' type from work logs table
                 const dayWorkLog = logs?.find(l => isSameDay(new Date(l.date), day) && l.type === 'work');
                 const dayAbsenceLog = logs?.find(l => isSameDay(new Date(l.date), day) && l.type === 'absence');
                 const dayAbsence = absences?.find(a => isSameDay(new Date(a.startDate), day));

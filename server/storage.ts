@@ -21,6 +21,8 @@ export interface IStorage {
   getAbsences(userId?: number, status?: string): Promise<(Absence & { user: User })[]>;
   getAbsence(id: number): Promise<Absence | undefined>;
   updateAbsenceStatus(id: number, status: string): Promise<Absence>;
+  updateAbsence(id: number, updates: Partial<InsertAbsence>): Promise<Absence>;
+  deleteAbsence(id: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -131,6 +133,15 @@ export class DatabaseStorage implements IStorage {
     // @ts-ignore
     const [updated] = await db.update(absences).set({ status }).where(eq(absences.id, id)).returning();
     return updated;
+  }
+
+  async updateAbsence(id: number, updates: Partial<InsertAbsence>): Promise<Absence> {
+    const [updated] = await db.update(absences).set(updates).where(eq(absences.id, id)).returning();
+    return updated;
+  }
+
+  async deleteAbsence(id: number): Promise<void> {
+    await db.delete(absences).where(eq(absences.id, id));
   }
 }
 

@@ -248,6 +248,42 @@ export async function registerRoutes(
     res.json(updated);
   });
 
+  // Allow employees to delete their own absence requests (only if pending)
+  app.delete("/api/absences/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
+    
+    const id = Number(req.params.id);
+    const absence = await storage.getAbsence(id);
+    if (!absence) return res.status(404).json({ message: "Not found" });
+    
+    const user = req.user as any;
+    // Only owner (if pending) or admin can delete
+    if (user.role !== 'admin' && (absence.userId !== user.id || absence.status !== 'pending')) {
+      return res.status(403).json({ message: "Cannot delete this absence request" });
+    }
+
+    await storage.deleteAbsence(id);
+    res.sendStatus(204);
+  });
+
+  // Allow employees to update their own absence requests (only if pending)
+  app.patch("/api/absences/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
+    
+    const id = Number(req.params.id);
+    const absence = await storage.getAbsence(id);
+    if (!absence) return res.status(404).json({ message: "Not found" });
+    
+    const user = req.user as any;
+    // Only owner (if pending) or admin can update
+    if (user.role !== 'admin' && (absence.userId !== user.id || absence.status !== 'pending')) {
+      return res.status(403).json({ message: "Cannot edit this absence request" });
+    }
+
+    const updated = await storage.updateAbsence(id, req.body);
+    res.json(updated);
+  });
+
   app.delete("/api/users/:id", async (req, res) => {
     if (!req.isAuthenticated() || (req.user as any).role !== 'admin') {
       return res.status(401).json({ message: "Unauthorized" });

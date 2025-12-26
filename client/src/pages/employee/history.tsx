@@ -5,15 +5,20 @@ import Layout from "@/components/layout";
 import { format, startOfMonth, endOfMonth } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Pencil, Trash2, Check, X, CalendarClock } from "lucide-react";
+import { Pencil, Trash2, Check, X, CalendarClock, Filter } from "lucide-react";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 
 export default function EmployeeWorkHistory() {
   const { user } = useAuth();
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editData, setEditData] = useState({ startTime: "", endTime: "" });
+  const [filterType, setFilterType] = useState<"all" | "work" | "absence">("all");
+  const [filterStartDate, setFilterStartDate] = useState("");
+  const [filterEndDate, setFilterEndDate] = useState("");
   
   const today = new Date();
   const monthStart = format(startOfMonth(today), 'yyyy-MM-dd');
@@ -21,12 +26,15 @@ export default function EmployeeWorkHistory() {
 
   const { data: logs } = useWorkLogs({ 
     userId: user?.id, 
-    startDate: monthStart, 
-    endDate: monthEnd 
+    startDate: filterStartDate || monthStart, 
+    endDate: filterEndDate || monthEnd 
   });
 
   // Filter out absences from work logs and only show work logs and absence work logs
   const filteredLogs = logs?.filter(log => log.type !== 'absence') || [];
+  
+  // Apply type filter
+  const filteredByType = filterType === "all" ? filteredLogs : filteredLogs.filter(log => log.type === filterType);
 
   const { data: absences } = useAbsences({ 
     userId: user?.id 
@@ -56,7 +64,7 @@ export default function EmployeeWorkHistory() {
 
   // Combine work logs (excluding absences) with absence records for display
   const allEvents = [
-    ...filteredLogs.map(l => ({ ...l, eventType: 'log' })),
+    ...filteredByType.map(l => ({ ...l, eventType: 'log' })),
     ...(absences || []).map(a => ({ 
       id: a.id, 
       date: a.startDate, 
@@ -78,7 +86,46 @@ export default function EmployeeWorkHistory() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Todos los Registros</CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle>Todos los Registros</CardTitle>
+              <Button variant="outline" size="sm" className="flex items-center gap-2">
+                <Filter className="h-4 w-4" />
+                Filtros
+              </Button>
+            </div>
+            <div className="flex flex-wrap gap-4 pt-2">
+              <div className="space-y-2">
+                <Label className="text-xs">Tipo</Label>
+                <Select value={filterType} onValueChange={(value: "all" | "work" | "absence") => setFilterType(value)}>
+                  <SelectTrigger className="w-32">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos</SelectItem>
+                    <SelectItem value="work">Trabajo</SelectItem>
+                    <SelectItem value="absence">Ausencia</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs">Desde</Label>
+                <Input 
+                  type="date" 
+                  value={filterStartDate} 
+                  onChange={e => setFilterStartDate(e.target.value)}
+                  className="w-40"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs">Hasta</Label>
+                <Input 
+                  type="date" 
+                  value={filterEndDate} 
+                  onChange={e => setFilterEndDate(e.target.value)}
+                  className="w-40"
+                />
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="rounded-md border overflow-hidden">

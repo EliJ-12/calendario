@@ -1,5 +1,5 @@
 import { useAuth } from "@/hooks/use-auth";
-import { useAbsences, useCreateAbsence } from "@/hooks/use-absences";
+import { useAbsences, useCreateAbsence, useUpdateAbsence, useDeleteAbsence } from "@/hooks/use-absences";
 import Layout from "@/components/layout";
 import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
@@ -16,12 +16,13 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useState } from "react";
 import { format } from "date-fns";
-import { Plus, FileUp } from "lucide-react";
+import { Plus, FileUp, Pencil, Trash2 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 
 export default function EmployeeAbsences() {
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
   
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -37,6 +38,8 @@ export default function EmployeeAbsences() {
 
   const { data: absences } = useAbsences({ userId: user?.id });
   const createAbsence = useCreateAbsence();
+  const updateAbsence = useUpdateAbsence();
+  const deleteAbsence = useDeleteAbsence();
 
   const handleFileUpload = async (file: File) => {
     setIsUploading(true);
@@ -72,6 +75,36 @@ export default function EmployeeAbsences() {
     }
   };
 
+  const handleEdit = (absence: any) => {
+    setEditingId(absence.id);
+    setStartDate(absence.startDate);
+    setEndDate(absence.endDate);
+    setReason(absence.reason);
+    setIsPartial(absence.isPartial);
+    setPartialHours(absence.partialHours?.toString() || "");
+    setStartTime("09:00");
+    setEndTime("13:00");
+    setFileUrl(absence.fileUrl || "");
+    setOpen(true);
+  };
+
+  const handleDelete = async (id: number) => {
+    await deleteAbsence.mutateAsync(id);
+  };
+
+  const resetForm = () => {
+    setStartDate("");
+    setEndDate("");
+    setReason("");
+    setIsPartial(false);
+    setPartialHours("");
+    setStartTime("09:00");
+    setEndTime("13:00");
+    setUploadedFile(null);
+    setFileUrl("");
+    setEditingId(null);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user?.id || isSubmitting) return;
@@ -79,12 +112,12 @@ export default function EmployeeAbsences() {
     setIsSubmitting(true);
     
     try {
-      await createAbsence.mutateAsync({
+      const data = {
         userId: user.id,
         startDate,
         endDate: isPartial ? startDate : endDate,
         reason,
-        status: "pending",
+        status: "pending" as const,
         isPartial,
         partialHours: isPartial ? (startTime && endTime ? 
           (() => {
@@ -93,18 +126,16 @@ export default function EmployeeAbsences() {
             return (eH * 60 + eM) - (sH * 60 + sM);
           })() : null) : null,
         fileUrl: fileUrl || null 
-      });
+      };
+
+      if (editingId) {
+        await updateAbsence.mutateAsync({ id: editingId, ...data });
+      } else {
+        await createAbsence.mutateAsync(data);
+      }
+      
       setOpen(false);
-      // Reset form
-      setStartDate("");
-      setEndDate("");
-      setReason("");
-      setIsPartial(false);
-      setPartialHours("");
-      setStartTime("09:00");
-      setEndTime("13:00");
-      setUploadedFile(null);
-      setFileUrl("");
+      resetForm();
     } finally {
       setIsSubmitting(false);
     }
@@ -127,7 +158,7 @@ export default function EmployeeAbsences() {
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Registrar Ausencia</DialogTitle>
+                <DialogTitle>{editingId ? "Editar Ausencia" : "Registrar Ausencia"}</DialogTitle>
                 <DialogDescription>Indica el motivo y horario de tu ausencia.</DialogDescription>
               </DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-4 pt-4">
@@ -211,6 +242,7 @@ export default function EmployeeAbsences() {
                   <th className="p-4">Motivo</th>
                   <th className="p-4">Documento</th>
                   <th className="p-4">Estado</th>
+                  <th className="p-4">Acciones</th>
                 </tr>
               </thead>
               <tbody>
@@ -238,6 +270,28 @@ export default function EmployeeAbsences() {
                       )}
                     </td>
                     <td className="p-4"><StatusBadge status={absence.status || "pending"} /></td>
+                    <td className="p-4 flex gap-1">
+                      {absence.status === 'pending' && (
+                        <>
+                          <Button 
+                            size="icon" 
+                            variant="ghost" 
+                            className="h-8 w-8" 
+                            onClick={() => handleEdit(absence)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            size="icon" 
+                            variant="ghost" 
+                            className="h-8 w-8 text-red-600" 
+                            onClick={() => handleDelete(absence.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
