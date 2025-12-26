@@ -7,6 +7,7 @@ import { setupAuth } from "./auth.js";
 import { api } from "../shared/routes.js";
 import { z } from "zod";
 import { insertUserSchema, insertWorkLogSchema, insertAbsenceSchema } from "../shared/schema.js";
+import { uploadFileToSupabase, getPublicUrl } from "./supabase-storage.js";
 
 import { db } from "./db.js";
 import { users, workLogs } from "../shared/schema.js";
@@ -48,44 +49,32 @@ export async function registerRoutes(
     try {
       const userId = (req.user as any).id;
       const fileName = req.file.originalname;
-      const fileUrl = `absence-files/${userId}/${fileName}`;
+      const filePath = `${userId}/${fileName}`;
+      
+      console.log(`Uploading file: ${fileName} for user: ${userId} to path: ${filePath}`);
+      
+      // Upload to Supabase Storage
+      const uploadData = await uploadFileToSupabase(
+        'absence-files',
+        filePath,
+        req.file.buffer,
+        req.file.mimetype
+      );
+      
+      console.log('Upload successful:', uploadData);
+      
+      // Get public URL
+      const fileUrl = getPublicUrl('absence-files', filePath);
+      
+      console.log('File URL:', fileUrl);
       
       res.json({ fileUrl });
     } catch (error) {
-      res.status(500).json({ message: "Failed to upload file" });
-    }
-  });
-
-  // File listing endpoint for absence files
-  app.get('/api/files/absence-files', async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ message: "Unauthorized" });
-    }
-
-    try {
-      const user = req.user as any;
-      
-      // For now, return mock data. In production, integrate with Supabase Storage
-      // This would list files from the 'absence-files' bucket with proper filtering
-      const mockFiles = [
-        {
-          name: 'justificacion.pdf',
-          url: 'https://mock-url.com/absence-files/1/justificacion.pdf',
-          type: 'application/pdf',
-          size: 1024000,
-          userId: 1,
-          createdAt: new Date().toISOString()
-        }
-      ];
-
-      // If admin, return all files; if employee, return only their files
-      const filteredFiles = user.role === 'admin' 
-        ? mockFiles 
-        : mockFiles.filter(file => file.userId === user.id);
-
-      res.json(filteredFiles);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to list files" });
+      console.error('File upload error:', error);
+      res.status(500).json({ 
+        message: "Failed to upload file",
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
     }
   });
 
