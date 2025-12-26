@@ -17,7 +17,8 @@ const connectionString = process.env.DATABASE_URL;
 // avoids resolution differences between runtimes.
 const shouldUseSsl =
   process.env.NODE_ENV === "production" &&
-  /\.supabase\.co(?::\d+)?\//.test(connectionString);
+  (connectionString.includes("sslmode=require") ||
+    /\.supabase\.(co|com)(?::\d+)?\//.test(connectionString));
 
 export const pool = new Pool({
   connectionString,
