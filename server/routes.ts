@@ -1,5 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
+import multer from "multer";
+import path from "path";
 import { storage } from "./storage.js";
 import { setupAuth } from "./auth.js";
 import { api } from "../shared/routes.js";
@@ -16,6 +18,41 @@ export async function registerRoutes(
 ): Promise<Server> {
   // Setup Auth
   const { hashPassword } = await setupAuth(app);
+
+  // Configure multer for file uploads
+  const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: {
+      fileSize: 5 * 1024 * 1024, // 5MB limit
+    },
+    fileFilter: (req, file, cb) => {
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'application/pdf'];
+      if (allowedTypes.includes(file.mimetype)) {
+        cb(null, true);
+      } else {
+        cb(new Error('Invalid file type. Only JPEG, PNG, GIF, and PDF files are allowed.'));
+      }
+    }
+  });
+
+  // File upload endpoint
+  app.post('/api/upload', upload.single('file'), async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ message: "No file uploaded" });
+    }
+
+    try {
+      // For now, return a mock URL. In production, you'd upload to a cloud storage service
+      const fileUrl = `/uploads/${req.file.originalname}`;
+      res.json({ fileUrl });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to upload file" });
+    }
+  });
 
   // === User Management (Admin Only ideally, but open for now for setup) ===
   app.get(api.users.list.path, async (req, res) => {
@@ -81,6 +118,21 @@ export async function registerRoutes(
     
     try {
       const input = insertWorkLogSchema.parse(req.body);
+      
+      // Check for duplicate work log on same date for same user and type
+      const existingLogs = await storage.getWorkLogs(input.userId, input.date, input.date);
+      const duplicate = existingLogs.find(log => 
+        log.date === input.date && 
+        log.type === input.type &&
+        log.userId === input.userId
+      );
+      
+      if (duplicate) {
+        return res.status(409).json({ 
+          message: `Ya existe un registro de ${input.type === 'work' ? 'trabajo' : 'ausencia'} para esta fecha.` 
+        });
+      }
+      
       const log = await storage.createWorkLog({
         ...input,
         userId: (req.user as any).id // Enforce current user
@@ -151,6 +203,28 @@ export async function registerRoutes(
 
     try {
       const input = insertAbsenceSchema.parse(req.body);
+      
+      // Check for overlapping absence requests
+      const existingAbsences = await storage.getAbsences(input.userId);
+      const overlap = existingAbsences.find(absence => {
+        const existingStart = new Date(absence.startDate);
+        const existingEnd = new Date(absence.endDate);
+        const newStart = new Date(input.startDate);
+        const newEnd = new Date(input.endDate);
+        
+        return (
+          (newStart >= existingStart && newStart <= existingEnd) ||
+          (newEnd >= existingStart && newEnd <= existingEnd) ||
+          (newStart <= existingStart && newEnd >= existingEnd)
+        );
+      });
+      
+      if (overlap) {
+        return res.status(409).json({ 
+          message: "Ya existe una solicitud de ausencia para este período." 
+        });
+      }
+      
       const absence = await storage.createAbsence({
         ...input,
         userId: (req.user as any).id

@@ -25,6 +25,9 @@ export default function EmployeeWorkHistory() {
     endDate: monthEnd 
   });
 
+  // Filter out absences from work logs and only show work logs and absence work logs
+  const filteredLogs = logs?.filter(log => log.type !== 'absence') || [];
+
   const { data: absences } = useAbsences({ 
     userId: user?.id 
   });
@@ -51,9 +54,9 @@ export default function EmployeeWorkHistory() {
     setEditingId(null);
   };
 
-  // Combine and sort all events
+  // Combine work logs (excluding absences) with absence records for display
   const allEvents = [
-    ...(logs || []).map(l => ({ ...l, eventType: 'log' })),
+    ...filteredLogs.map(l => ({ ...l, eventType: 'log' })),
     ...(absences || []).map(a => ({ 
       id: a.id, 
       date: a.startDate, 

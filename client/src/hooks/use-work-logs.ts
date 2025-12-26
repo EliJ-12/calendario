@@ -31,6 +31,9 @@ export function useCreateWorkLog() {
 
       if (!res.ok) {
         const error = await res.json();
+        if (res.status === 409) {
+          throw new Error(error.message || "Registro de horas duplicado");
+        }
         throw new Error(error.message || "Failed to create work log");
       }
       return api.workLogs.create.responses[201].parse(await res.json());
@@ -40,7 +43,15 @@ export function useCreateWorkLog() {
       toast({ title: "Work logged", description: "Your hours have been recorded successfully." });
     },
     onError: (error: Error) => {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+      if (error.message.includes("Ya existe")) {
+        toast({ 
+          title: "Registro Duplicado", 
+          description: error.message, 
+          variant: "destructive" 
+        });
+      } else {
+        toast({ title: "Error", description: error.message, variant: "destructive" });
+      }
     },
   });
 }

@@ -30,30 +30,84 @@ export default function EmployeeAbsences() {
   const [partialHours, setPartialHours] = useState("");
   const [startTime, setStartTime] = useState("09:00");
   const [endTime, setEndTime] = useState("13:00");
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [fileUrl, setFileUrl] = useState<string>("");
+  const [isUploading, setIsUploading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { data: absences } = useAbsences({ userId: user?.id });
   const createAbsence = useCreateAbsence();
 
+  const handleFileUpload = async (file: File) => {
+    setIsUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        credentials: 'include',
+        body: formData
+      });
+      
+      if (!response.ok) {
+        throw new Error('Upload failed');
+      }
+      
+      const result = await response.json();
+      setFileUrl(result.fileUrl);
+      setUploadedFile(file);
+    } catch (error) {
+      console.error('Upload error:', error);
+      // Handle error appropriately
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      handleFileUpload(file);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user?.id) return;
+    if (!user?.id || isSubmitting) return;
 
-    await createAbsence.mutateAsync({
-      userId: user.id,
-      startDate,
-      endDate: isPartial ? startDate : endDate,
-      reason,
-      status: "pending",
-      isPartial,
-      partialHours: isPartial ? (startTime && endTime ? 
-        (() => {
-          const [sH, sM] = startTime.split(':').map(Number);
-          const [eH, eM] = endTime.split(':').map(Number);
-          return (eH * 60 + eM) - (sH * 60 + sM);
-        })() : null) : null,
-      fileUrl: null 
-    });
-    setOpen(false);
+    setIsSubmitting(true);
+    
+    try {
+      await createAbsence.mutateAsync({
+        userId: user.id,
+        startDate,
+        endDate: isPartial ? startDate : endDate,
+        reason,
+        status: "pending",
+        isPartial,
+        partialHours: isPartial ? (startTime && endTime ? 
+          (() => {
+            const [sH, sM] = startTime.split(':').map(Number);
+            const [eH, eM] = endTime.split(':').map(Number);
+            return (eH * 60 + eM) - (sH * 60 + sM);
+          })() : null) : null,
+        fileUrl: fileUrl || null 
+      });
+      setOpen(false);
+      // Reset form
+      setStartDate("");
+      setEndDate("");
+      setReason("");
+      setIsPartial(false);
+      setPartialHours("");
+      setStartTime("09:00");
+      setEndTime("13:00");
+      setUploadedFile(null);
+      setFileUrl("");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -107,9 +161,31 @@ export default function EmployeeAbsences() {
 
                 <div className="space-y-2">
                   <Label>Adjuntar Documento (Opcional)</Label>
-                  <div className="border-2 border-dashed rounded-md p-4 flex flex-col items-center justify-center text-muted-foreground">
-                    <FileUp className="h-6 w-6 mb-2" />
-                    <span className="text-xs">Haz clic o arrastra un archivo</span>
+                  <div className="border-2 border-dashed rounded-md p-4 flex flex-col items-center justify-center">
+                    <input
+                      type="file"
+                      accept=".jpg,.jpeg,.png,.gif,.pdf"
+                      onChange={handleFileChange}
+                      className="hidden"
+                      id="file-upload"
+                      disabled={isUploading}
+                    />
+                    <label 
+                      htmlFor="file-upload" 
+                      className="cursor-pointer flex flex-col items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      {isUploading ? (
+                        <div className="animate-spin h-6 w-6 border-2 border-primary border-t-transparent rounded-full mb-2"></div>
+                      ) : (
+                        <FileUp className="h-6 w-6 mb-2" />
+                      )}
+                      <span className="text-xs">
+                        {isUploading ? 'Subiendo...' : uploadedFile ? uploadedFile.name : 'Haz clic o arrastra un archivo'}
+                      </span>
+                      <span className="text-xs text-muted-foreground mt-1">
+                        PDF, JPG, PNG, GIF (máx. 5MB)
+                      </span>
+                    </label>
                   </div>
                 </div>
 
@@ -117,7 +193,9 @@ export default function EmployeeAbsences() {
                   <Label>Motivo</Label>
                   <Textarea value={reason} onChange={e => setReason(e.target.value)} required />
                 </div>
-                <Button type="submit" className="w-full">Enviar Registro</Button>
+                <Button type="submit" className="w-full" disabled={isSubmitting || isUploading}>
+                  {isSubmitting ? "Enviando..." : "Enviar Registro"}
+                </Button>
               </form>
             </DialogContent>
           </Dialog>
@@ -131,6 +209,7 @@ export default function EmployeeAbsences() {
                   <th className="p-4">Fechas</th>
                   <th className="p-4">Tipo</th>
                   <th className="p-4">Motivo</th>
+                  <th className="p-4">Documento</th>
                   <th className="p-4">Estado</th>
                 </tr>
               </thead>
@@ -143,6 +222,21 @@ export default function EmployeeAbsences() {
                     </td>
                     <td className="p-4">{absence.isPartial ? `${absence.partialHours ? absence.partialHours/60 : 0}h parcial` : 'Jornada completa'}</td>
                     <td className="p-4 max-w-xs truncate">{absence.reason}</td>
+                    <td className="p-4">
+                      {absence.fileUrl ? (
+                        <a 
+                          href={absence.fileUrl} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:text-blue-800 underline flex items-center gap-1"
+                        >
+                          <FileUp className="h-4 w-4" />
+                          Ver documento
+                        </a>
+                      ) : (
+                        <span className="text-muted-foreground">-</span>
+                      )}
+                    </td>
                     <td className="p-4"><StatusBadge status={absence.status || "pending"} /></td>
                   </tr>
                 ))}

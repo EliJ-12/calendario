@@ -52,6 +52,8 @@ export default function EmployeeDashboard() {
   const createLog = useCreateWorkLog();
   const [regStartTime, setRegStartTime] = useState("09:00");
   const [regEndTime, setRegEndTime] = useState("18:00");
+  const [regType, setRegType] = useState<"work" | "absence">("work");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const days = eachDayOfInterval(displayInterval);
 
@@ -65,21 +67,32 @@ export default function EmployeeDashboard() {
 
   const handleFichar = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user?.id) return;
+    if (!user?.id || isSubmitting) return;
     
-    const [sH, sM] = regStartTime.split(':').map(Number);
-    const [eH, eM] = regEndTime.split(':').map(Number);
-    const diff = (eH * 60 + eM) - (sH * 60 + sM);
+    setIsSubmitting(true);
+    
+    try {
+      const [sH, sM] = regStartTime.split(':').map(Number);
+      const [eH, eM] = regEndTime.split(':').map(Number);
+      const diff = (eH * 60 + eM) - (sH * 60 + sM);
 
-    await createLog.mutateAsync({
-      userId: user.id,
-      date,
-      startTime: regStartTime,
-      endTime: regEndTime,
-      totalHours: diff > 0 ? diff : 480,
-      type: "work"
-    });
-    setOpen(false);
+      await createLog.mutateAsync({
+        userId: user.id,
+        date,
+        startTime: regStartTime,
+        endTime: regEndTime,
+        totalHours: diff > 0 ? diff : 480,
+        type: regType
+      });
+      setOpen(false);
+      // Reset form
+      setDate(format(new Date(), 'yyyy-MM-dd'));
+      setRegStartTime("09:00");
+      setRegEndTime("18:00");
+      setRegType("work");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -103,20 +116,34 @@ export default function EmployeeDashboard() {
               </DialogHeader>
               <form onSubmit={handleFichar} className="space-y-4 pt-4">
                 <div className="space-y-2">
+                  <Label>Tipo de Registro</Label>
+                  <Select value={regType} onValueChange={(value: "work" | "absence") => setRegType(value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecciona tipo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="work">Trabajo</SelectItem>
+                      <SelectItem value="absence">Ausencia</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
                   <Label>Fecha</Label>
                   <Input type="date" value={date} onChange={e => setDate(e.target.value)} required />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label>Entrada</Label>
+                    <Label>{regType === "work" ? "Entrada" : "Hora Inicio"}</Label>
                     <Input type="time" value={regStartTime} onChange={e => setRegStartTime(e.target.value)} required />
                   </div>
                   <div className="space-y-2">
-                    <Label>Salida</Label>
+                    <Label>{regType === "work" ? "Salida" : "Hora Fin"}</Label>
                     <Input type="time" value={regEndTime} onChange={e => setRegEndTime(e.target.value)} required />
                   </div>
                 </div>
-                <Button type="submit" className="w-full">Guardar Registro</Button>
+                <Button type="submit" className="w-full" disabled={isSubmitting}>
+                  {isSubmitting ? "Guardando..." : (regType === "work" ? "Guardar Registro de Trabajo" : "Guardar Registro de Ausencia")}
+                </Button>
               </form>
             </DialogContent>
           </Dialog>
@@ -161,9 +188,11 @@ export default function EmployeeDashboard() {
                 <div key={d} className="bg-background p-2 text-center text-xs font-medium text-muted-foreground">{d}</div>
               ))}
               {days.map(day => {
-                const dayLog = logs?.find(l => isSameDay(new Date(l.date), day) && l.type === 'work');
+                const dayWorkLog = logs?.find(l => isSameDay(new Date(l.date), day) && l.type === 'work');
+                const dayAbsenceLog = logs?.find(l => isSameDay(new Date(l.date), day) && l.type === 'absence');
                 const dayAbsence = absences?.find(a => isSameDay(new Date(a.startDate), day));
-                const isFichado = dayLog?.type === 'work';
+                const isFichado = dayWorkLog?.type === 'work';
+                const isAusenciaLog = dayAbsenceLog?.type === 'absence';
                 const isAusencia = dayAbsence;
                 const isCurrentMonth = day.getMonth() === currentDate.getMonth();
 
@@ -180,11 +209,16 @@ export default function EmployeeDashboard() {
                     <div className="mt-2 space-y-1">
                       {isFichado && (
                         <div className="text-[10px] bg-emerald-100 text-emerald-700 p-1 rounded border border-emerald-200">
-                          {dayLog.startTime} - {dayLog.endTime}
+                          {dayWorkLog.startTime} - {dayWorkLog.endTime}
+                        </div>
+                      )}
+                      {isAusenciaLog && (
+                        <div className="text-[10px] bg-blue-100 text-blue-700 p-1 rounded border border-blue-200">
+                          {dayAbsenceLog.startTime} - {dayAbsenceLog.endTime}
                         </div>
                       )}
                       {isAusencia && (
-                        <div className="text-[10px] bg-blue-100 text-blue-700 p-1 rounded border border-blue-200">
+                        <div className="text-[10px] bg-orange-100 text-orange-700 p-1 rounded border border-orange-200">
                           {dayAbsence.isPartial ? "Ausencia Parcial" : "Ausencia Total"}
                         </div>
                       )}

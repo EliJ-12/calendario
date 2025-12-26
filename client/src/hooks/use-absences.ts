@@ -31,6 +31,9 @@ export function useCreateAbsence() {
 
       if (!res.ok) {
         const error = await res.json();
+        if (res.status === 409) {
+          throw new Error(error.message || "Solicitud de ausencia duplicada");
+        }
         throw new Error(error.message || "Failed to submit request");
       }
       return api.absences.create.responses[201].parse(await res.json());
@@ -40,7 +43,15 @@ export function useCreateAbsence() {
       toast({ title: "Request Sent", description: "Your absence request is pending approval." });
     },
     onError: (error: Error) => {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+      if (error.message.includes("Ya existe")) {
+        toast({ 
+          title: "Solicitud Duplicada", 
+          description: error.message, 
+          variant: "destructive" 
+        });
+      } else {
+        toast({ title: "Error", description: error.message, variant: "destructive" });
+      }
     },
   });
 }
