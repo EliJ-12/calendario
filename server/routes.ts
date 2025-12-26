@@ -7,7 +7,7 @@ import { setupAuth } from "./auth.js";
 import { api } from "../shared/routes.js";
 import { z } from "zod";
 import { insertUserSchema, insertWorkLogSchema, insertAbsenceSchema } from "../shared/schema.js";
-const { subirArchivo } = require("../supabaseStorage.js");
+import { createClient } from '@supabase/supabase-js';
 
 import { db } from "./db.js";
 import { users, workLogs } from "../shared/schema.js";
@@ -36,6 +36,12 @@ export async function registerRoutes(
     }
   });
 
+  // Initialize Supabase client
+  const supabase = createClient(
+    process.env.SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+
   // File upload endpoint
   app.post('/api/upload', upload.single('file'), async (req, res) => {
     if (!req.isAuthenticated()) {
@@ -49,9 +55,26 @@ export async function registerRoutes(
     try {
       const userId = (req.user as any).id;
       const fileName = req.file.originalname;
-      const fileUrl = await subirArchivo(req.file, fileName);
+      const filePath = `absence-files/${userId}/${fileName}`;
       
-      res.json({ fileUrl });
+      // Upload to Supabase Storage
+      const { data, error } = await supabase.storage
+        .from('absence-files')
+        .upload(filePath, req.file.buffer, {
+          contentType: req.file.mimetype,
+          upsert: false
+        });
+
+      if (error) {
+        throw new Error(`Upload failed: ${error.message}`);
+      }
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('absence-files')
+        .getPublicUrl(filePath);
+      
+      res.json({ fileUrl: publicUrl });
     } catch (error) {
       console.error('Upload error:', error);
       res.status(500).json({ message: "Failed to upload file" });
