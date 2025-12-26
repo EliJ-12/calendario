@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { insertUserSchema, insertWorkLogSchema, insertAbsenceSchema, users, workLogs, absences } from './schema';
+import { insertUserSchema, insertWorkLogSchema, insertAbsenceSchema, users, workLogs, absences } from './schema.js';
 
 export const errorSchemas = {
   validation: z.object({
