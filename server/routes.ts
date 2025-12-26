@@ -2,7 +2,6 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import multer from "multer";
 import path from "path";
-import { createClient } from '@supabase/supabase-js';
 import { storage } from "./storage.js";
 import { setupAuth } from "./auth.js";
 import { api } from "../shared/routes.js";
@@ -20,19 +19,6 @@ export async function registerRoutes(
   // Setup Auth
   const { hashPassword } = await setupAuth(app);
 
-  // Initialize Supabase client only if credentials are available
-  let supabase: any = null;
-  if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
-    try {
-      supabase = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL,
-        process.env.SUPABASE_SERVICE_ROLE_KEY
-      );
-    } catch (error) {
-      console.warn('Supabase client initialization failed:', error);
-    }
-  }
-
   // Configure multer for file uploads
   const upload = multer({
     storage: multer.memoryStorage(),
@@ -49,7 +35,7 @@ export async function registerRoutes(
     }
   });
 
-  // File upload endpoint
+  // File upload endpoint - simplified without Supabase dependency
   app.post('/api/upload', upload.single('file'), async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).json({ message: "Unauthorized" });
@@ -61,35 +47,14 @@ export async function registerRoutes(
 
     try {
       const file = req.file;
+      // For now, return a mock URL. In production, you'd configure proper file storage
+      const fileName = `${Date.now()}-${file.originalname}`;
+      const fileUrl = `/uploads/${fileName}`;
       
-      if (supabase) {
-        // Upload to Supabase storage
-        const fileName = `${Date.now()}-${file.originalname}`;
-        
-        const { data, error } = await supabase.storage
-          .from('absence-files')
-          .upload(fileName, file.buffer, {
-            contentType: file.mimetype,
-            upsert: false
-          });
-
-        if (error) {
-          console.error('Supabase upload error:', error);
-          return res.status(500).json({ message: "Failed to upload file to storage" });
-        }
-
-        // Get public URL
-        const { data: { publicUrl } } = supabase.storage
-          .from('absence-files')
-          .getPublicUrl(fileName);
-
-        res.json({ fileUrl: publicUrl });
-      } else {
-        // Fallback: return a mock URL when Supabase is not configured
-        console.warn('Supabase not configured, using fallback file URL');
-        const fileUrl = `/uploads/${file.originalname}`;
-        res.json({ fileUrl });
-      }
+      // TODO: Implement actual file storage (S3, Supabase, etc.)
+      console.log('File uploaded:', fileName, 'Size:', file.size, 'Type:', file.mimetype);
+      
+      res.json({ fileUrl });
     } catch (error) {
       console.error('Upload error:', error);
       res.status(500).json({ message: "Failed to upload file" });

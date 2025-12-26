@@ -31,20 +31,24 @@ async function comparePasswords(supplied: string, stored: string) {
 }
 
 export async function setupAuth(app: Express) {
-  const PgSession = connectPg(session);
+  let PgSession: any = null;
+  
+  // Only use database session storage if database is properly configured
+  if (process.env.DATABASE_URL && process.env.DATABASE_URL !== "postgresql://localhost:5432/temp") {
+    PgSession = connectPg(session);
+  }
 
   const sessionSettings: session.SessionOptions = {
     secret: process.env.SESSION_SECRET || "super_secret_session_key",
     resave: false,
     saveUninitialized: false,
-    store:
-      app.get("env") === "production"
-        ? new PgSession({
-            pool,
-            tableName: "session",
-            createTableIfMissing: true,
-          })
-        : undefined,
+    store: PgSession && app.get("env") === "production"
+      ? new PgSession({
+          pool,
+          tableName: "session",
+          createTableIfMissing: true,
+        })
+      : undefined,
     cookie: {
       secure: app.get("env") === "production",
       sameSite: "lax",
