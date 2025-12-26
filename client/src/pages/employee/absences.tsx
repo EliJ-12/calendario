@@ -44,6 +44,7 @@ export default function EmployeeAbsences() {
   const handleFileUpload = async (file: File) => {
     setIsUploading(true);
     try {
+      console.log('Starting file upload for:', file.name);
       const formData = new FormData();
       formData.append('file', file);
       
@@ -53,11 +54,16 @@ export default function EmployeeAbsences() {
         body: formData
       });
       
+      console.log('Upload response status:', response.status);
+      
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Upload failed with response:', errorText);
         throw new Error('Upload failed');
       }
       
       const result = await response.json();
+      console.log('Upload result:', result);
       setFileUrl(result.fileUrl);
       setUploadedFile(file);
     } catch (error) {
@@ -127,6 +133,8 @@ export default function EmployeeAbsences() {
           })() : null) : null,
         fileUrl: fileUrl || null 
       };
+      
+      console.log('Submitting absence with data:', data);
 
       if (editingId) {
         await updateAbsence.mutateAsync({ id: editingId, ...data });

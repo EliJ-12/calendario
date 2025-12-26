@@ -20,33 +20,24 @@ export async function registerRoutes(
   // Setup Auth
   const { hashPassword } = await setupAuth(app);
 
-  // Initialize Supabase client with comprehensive environment checking
+  // Initialize Supabase client with multiple possible environment variable names
   const supabaseUrl = process.env.SUPABASE_URL || 
                         process.env.NEXT_PUBLIC_SUPABASE_URL || 
                         process.env.VITE_SUPABASE_URL || '';
   
-  // Try multiple service key names (most common ones)
-  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 
-                       process.env.SERVICE_ROLE_KEY ||
-                       process.env.SUPABASE_KEY || 
-                       process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY || '';
-  
-  console.log('Environment check:', {
-    supabaseUrl: !!supabaseUrl,
-    supabaseKey: !!supabaseKey,
-    availableEnvVars: Object.keys(process.env).filter(key => 
-      key.toLowerCase().includes('supabase')
-    )
-  });
+  const supabaseKey = process.env.SUPABASE_ANON_KEY || 
+                       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 
+                       process.env.VITE_SUPABASE_ANON_KEY || '';
   
   if (!supabaseUrl || !supabaseKey) {
-    console.error('Missing Supabase environment variables.');
-    console.error('Required variables:');
-    console.error('- SUPABASE_URL or NEXT_PUBLIC_SUPABASE_URL or VITE_SUPABASE_URL');
-    console.error('- SUPABASE_SERVICE_ROLE_KEY or SERVICE_ROLE_KEY or SUPABASE_KEY');
-    console.error('Available Supabase env vars:', Object.keys(process.env).filter(key => 
-      key.toLowerCase().includes('supabase')
-    ));
+    console.error('Missing Supabase environment variables. Available env vars:', {
+      SUPABASE_URL: !!process.env.SUPABASE_URL,
+      NEXT_PUBLIC_SUPABASE_URL: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
+      VITE_SUPABASE_URL: !!process.env.VITE_SUPABASE_URL,
+      SUPABASE_ANON_KEY: !!process.env.SUPABASE_ANON_KEY,
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+      VITE_SUPABASE_ANON_KEY: !!process.env.VITE_SUPABASE_ANON_KEY
+    });
     throw new Error('Supabase configuration is missing. Please check your environment variables.');
   }
 
@@ -78,19 +69,14 @@ export async function registerRoutes(
     }
 
     if (!req.file) {
-      console.log('Upload failed: No file');
+      console.log('Upload failed: No file received');
       return res.status(400).json({ message: "No file uploaded" });
     }
 
     try {
-      console.log('File details:', {
-        originalname: req.file.originalname,
-        mimetype: req.file.mimetype,
-        size: req.file.size
-      });
-
       const userId = (req.user as any).id;
       const originalName = req.file.originalname;
+      console.log('Processing upload for user:', userId, 'file:', originalName);
       
       // Clean file name: replace spaces with hyphens, remove special characters
       const cleanFileName = originalName
@@ -100,51 +86,34 @@ export async function registerRoutes(
       // Create organized path with user folder and timestamp
       const timestamp = Date.now();
       const filePath = `${userId}/${timestamp}-${cleanFileName}`;
-      
-      console.log('Upload path:', filePath);
-      console.log('Supabase client initialized:', !!supabase);
+      console.log('File path for upload:', filePath);
       
       // Upload to Supabase Storage
-      console.log('Attempting upload to bucket: absence-files');
       const { data, error } = await supabase.storage
         .from('absence-files')
         .upload(filePath, req.file.buffer, {
           contentType: req.file.mimetype,
-          cacheControl: '3600',
           upsert: false
         });
 
-      console.log('Supabase upload result:', { data, error });
-
       if (error) {
         console.error('Supabase upload error:', error);
-        // Try alternative bucket name if needed
-        console.log('Trying alternative approach...');
-        
-        const { data: altData, error: altError } = await supabase.storage
-          .from('absence-files')
-          .upload(filePath, req.file.buffer);
-          
-        if (altError) {
-          const errorMessage = altError instanceof Error ? altError.message : String(altError);
-          throw new Error(`Failed to upload file to Supabase Storage: ${errorMessage}`);
-        }
-        
-        console.log('Alternative upload successful:', altData);
+        throw new Error('Failed to upload file to Supabase Storage');
       }
 
+      console.log('Supabase upload successful');
+
       // Get public URL
-      const { data: urlData } = supabase.storage
+      const { data: { publicUrl } } = supabase.storage
         .from('absence-files')
         .getPublicUrl(filePath);
 
-      console.log('Public URL result:', urlData);
+      console.log('Generated public URL:', publicUrl);
 
-      res.json({ fileUrl: urlData.publicUrl });
+      res.json({ fileUrl: publicUrl });
     } catch (error) {
       console.error('Upload error:', error);
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      res.status(500).json({ message: "Failed to upload file", error: errorMessage });
+      res.status(500).json({ message: "Failed to upload file" });
     }
   });
 
