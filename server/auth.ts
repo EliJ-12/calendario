@@ -6,6 +6,8 @@ import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { storage } from "./storage";
 import { User } from "@shared/schema";
+import connectPg from "connect-pg-simple";
+import { pool } from "./db";
 
 const scryptAsync = promisify(scrypt);
 
@@ -23,13 +25,23 @@ async function comparePasswords(supplied: string, stored: string) {
 }
 
 export async function setupAuth(app: Express) {
+  const PgSession = connectPg(session);
+
   const sessionSettings: session.SessionOptions = {
     secret: process.env.SESSION_SECRET || "super_secret_session_key",
     resave: false,
     saveUninitialized: false,
-    store: undefined, // Memory store by default, sufficient for simple demo
+    store:
+      app.get("env") === "production"
+        ? new PgSession({
+            pool,
+            tableName: "session",
+            createTableIfMissing: true,
+          })
+        : undefined,
     cookie: {
       secure: app.get("env") === "production",
+      sameSite: "lax",
     }
   };
 

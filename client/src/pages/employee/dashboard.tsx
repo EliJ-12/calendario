@@ -52,7 +52,6 @@ export default function EmployeeDashboard() {
   const createLog = useCreateWorkLog();
   const [regStartTime, setRegStartTime] = useState("09:00");
   const [regEndTime, setRegEndTime] = useState("18:00");
-  const [regType, setRegType] = useState<"work" | "absence">("work");
 
   const days = eachDayOfInterval(displayInterval);
 
@@ -78,7 +77,7 @@ export default function EmployeeDashboard() {
       startTime: regStartTime,
       endTime: regEndTime,
       totalHours: diff > 0 ? diff : 480,
-      type: regType
+      type: "work"
     });
     setOpen(false);
   };
@@ -103,16 +102,6 @@ export default function EmployeeDashboard() {
                 <DialogTitle>Registrar Jornada</DialogTitle>
               </DialogHeader>
               <form onSubmit={handleFichar} className="space-y-4 pt-4">
-                <div className="space-y-2">
-                  <Label>Tipo de Registro</Label>
-                  <Select value={regType} onValueChange={(v: any) => setRegType(v)}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="work">Trabajo</SelectItem>
-                      <SelectItem value="absence">Ausencia</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
                 <div className="space-y-2">
                   <Label>Fecha</Label>
                   <Input type="date" value={date} onChange={e => setDate(e.target.value)} required />
@@ -172,10 +161,10 @@ export default function EmployeeDashboard() {
                 <div key={d} className="bg-background p-2 text-center text-xs font-medium text-muted-foreground">{d}</div>
               ))}
               {days.map(day => {
-                const dayLog = logs?.find(l => isSameDay(new Date(l.date), day));
+                const dayLog = logs?.find(l => isSameDay(new Date(l.date), day) && l.type === 'work');
                 const dayAbsence = absences?.find(a => isSameDay(new Date(a.startDate), day));
                 const isFichado = dayLog?.type === 'work';
-                const isAusencia = dayLog?.type === 'absence' || dayAbsence;
+                const isAusencia = dayAbsence;
                 const isCurrentMonth = day.getMonth() === currentDate.getMonth();
 
                 return (
@@ -196,7 +185,7 @@ export default function EmployeeDashboard() {
                       )}
                       {isAusencia && (
                         <div className="text-[10px] bg-blue-100 text-blue-700 p-1 rounded border border-blue-200">
-                          {dayAbsence ? (dayAbsence.isPartial ? "Ausencia Parcial" : "Ausencia Total") : "Ausencia"}
+                          {dayAbsence.isPartial ? "Ausencia Parcial" : "Ausencia Total"}
                         </div>
                       )}
                     </div>

@@ -60,12 +60,15 @@ export default function EmployeeAbsences() {
     <Layout>
       <div className="space-y-8">
         <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold tracking-tight">Ausencias</h1>
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Mis Ausencias</h1>
+            <p className="text-muted-foreground">Justifica tus ausencias y consulta el estado</p>
+          </div>
           
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
               <Button>
-                <Plus className="mr-2 h-4 w-4" /> Ausencia
+                <Plus className="mr-2 h-4 w-4" /> Justificar Ausencia
               </Button>
             </DialogTrigger>
             <DialogContent>

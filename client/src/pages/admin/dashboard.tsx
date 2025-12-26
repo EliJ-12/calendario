@@ -160,8 +160,8 @@ export default function AdminDashboard() {
                     ))}
                     {days.map(day => {
                       const dayLogs = filteredLogs.filter(l => isSameDay(new Date(l.date), day));
-                      const isFichado = dayLogs.some(l => l.type === 'work');
-                      const isAusencia = dayLogs.some(l => l.type === 'absence');
+                      const workLogs = dayLogs.filter(l => l.type === 'work');
+                      const absenceLogs = dayLogs.filter(l => l.type === 'absence');
                       const isCurrentMonth = day.getMonth() === currentDate.getMonth();
                       
                       return (
@@ -174,8 +174,24 @@ export default function AdminDashboard() {
                             !isCurrentMonth ? "text-muted-foreground/50" : "text-muted-foreground"
                           )}>{format(day, 'd')}</span>
                           <div className="mt-1 space-y-1">
-                            {isFichado && <div className="h-1.5 w-full bg-emerald-500 rounded-full" title="Trabajado" />}
-                            {isAusencia && <div className="h-1.5 w-full bg-blue-500 rounded-full" title="Ausencia" />}
+                            {workLogs.length > 0 && (
+                              <div className="text-xs">
+                                {workLogs.map((log, idx) => (
+                                  <div key={idx} className="text-emerald-600 font-medium">
+                                    {log.user?.fullName?.split(' ')[0]}: {log.startTime}-{log.endTime}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            {absenceLogs.length > 0 && (
+                              <div className="text-xs">
+                                {absenceLogs.map((log, idx) => (
+                                  <div key={idx} className="text-blue-600 font-medium">
+                                    {log.user?.fullName?.split(' ')[0]}: Ausencia
+                                  </div>
+                                ))}
+                              </div>
+                            )}
                           </div>
                         </div>
                       );
