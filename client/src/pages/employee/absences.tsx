@@ -47,22 +47,31 @@ export default function EmployeeAbsences() {
       const formData = new FormData();
       formData.append('file', file);
       
+      console.log('Uploading file:', file.name, 'Size:', file.size, 'Type:', file.type);
+      
       const response = await fetch('/api/upload', {
         method: 'POST',
         credentials: 'include',
         body: formData
       });
       
+      console.log('Upload response status:', response.status);
+      
       if (!response.ok) {
-        throw new Error('Upload failed');
+        const errorText = await response.text();
+        console.error('Upload failed:', response.status, errorText);
+        throw new Error(`Upload failed: ${response.status} ${errorText}`);
       }
       
       const result = await response.json();
+      console.log('Upload result:', result);
       setFileUrl(result.fileUrl);
       setUploadedFile(file);
     } catch (error) {
       console.error('Upload error:', error);
-      // Handle error appropriately
+      // You might want to show a toast message here
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      alert('Error al subir el archivo: ' + errorMessage);
     } finally {
       setIsUploading(false);
     }
@@ -135,10 +144,7 @@ export default function EmployeeAbsences() {
       }
       
       setOpen(false);
-      // Only reset form if not editing, to preserve file URL during edit
-      if (!editingId) {
-        resetForm();
-      }
+      resetForm();
     } finally {
       setIsSubmitting(false);
     }

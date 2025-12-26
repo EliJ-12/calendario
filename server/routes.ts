@@ -61,17 +61,28 @@ export async function registerRoutes(
 
   // File upload endpoint with Supabase Storage
   app.post('/api/upload', upload.single('file'), async (req, res) => {
+    console.log('Upload request received');
+    
     if (!req.isAuthenticated()) {
+      console.log('User not authenticated');
       return res.status(401).json({ message: "Unauthorized" });
     }
 
     if (!req.file) {
+      console.log('No file in request');
       return res.status(400).json({ message: "No file uploaded" });
     }
 
     try {
       const userId = (req.user as any).id;
       const originalName = req.file.originalname;
+      
+      console.log('Processing upload:', {
+        userId,
+        originalName,
+        fileSize: req.file.size,
+        mimeType: req.file.mimetype
+      });
       
       // Clean file name: replace spaces with hyphens, remove special characters
       const cleanFileName = originalName
@@ -82,6 +93,8 @@ export async function registerRoutes(
       const timestamp = Date.now();
       const filePath = `${userId}/${timestamp}-${cleanFileName}`;
       
+      console.log('Uploading to path:', filePath);
+      
       // Upload to Supabase Storage
       const { data, error } = await supabase.storage
         .from('absence-files')
@@ -91,7 +104,8 @@ export async function registerRoutes(
         });
 
       if (error) {
-        throw new Error('Failed to upload file to Supabase Storage');
+        console.error('Supabase upload error:', error);
+        throw new Error('Failed to upload file to Supabase Storage: ' + error.message);
       }
 
       // Get public URL
@@ -99,10 +113,12 @@ export async function registerRoutes(
         .from('absence-files')
         .getPublicUrl(filePath);
 
+      console.log('Upload successful, public URL:', publicUrl);
       res.json({ fileUrl: publicUrl });
     } catch (error) {
       console.error('Upload error:', error);
-      res.status(500).json({ message: "Failed to upload file" });
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      res.status(500).json({ message: "Failed to upload file: " + errorMessage });
     }
   });
 
