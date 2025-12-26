@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Subir Archivos</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            border: 2px solid #ddd;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            border-bottom: 3px solid #4CAF50;
+            padding-bottom: 10px;
+        }
+        input[type="file"] {
+            margin: 20px 0;
+            padding: 10px;
+            border: 2px dashed #4CAF50;
+            border-radius: 5px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        .mensaje {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            display: none;
+        }
+        .exito {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+            display: block;
+        }
+        .error {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+            display: block;
+        }
+        .archivos-lista {
+            margin-top: 40px;
+            border-top: 2px solid #eee;
+            padding-top: 20px;
+        }
+        .archivo-item {
+            padding: 15px;
+            margin: 10px 0;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-left: 4px solid #4CAF50;
+        }
+        .archivo-item a {
+            color: #007bff;
+            text-decoration: none;
+            font-weight: bold;
+        }
+        .archivo-item a:hover {
+            text-decoration: underline;
+        }
+        .boton-actualizar {
+            background-color: #007bff;
+            margin-top: 10px;
+        }
+        .boton-actualizar:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📁 Subir Archivos</h1>
+        
+        <input type="file" id="archivoInput">
+        <br>
+        <button onclick="subirArchivo()" id="btnSubir">📤 Subir Archivo</button>
+        
+        <div id="mensaje" class="mensaje"></div>
+        
+        <div class="archivos-lista">
+            <h2>📋 Archivos subidos:</h2>
+            <div id="listaArchivos">Cargando...</div>
+            <button onclick="cargarArchivos()" class="boton-actualizar">🔄 Actualizar Lista</button>
+        </div>
+    </div>
+
+    <!-- Librería de Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <script>
+        // Configuración de Supabase
+        const SUPABASE_URL = 'https://rbvgwwviufuyunohmjhk.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJidmd3d3ZpdWZ1eXVub2htamhrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY1ODgzNzQsImV4cCI6MjA4MjE2NDM3NH0.AftikClnGloSnBvRJskUifDoaCQ7K8zPW_83aZvu7o4';
+        
+        // Inicializar Supabase
+        const { createClient } = supabase;
+        const supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY);
+        
+        // Función para subir archivo
+        async function subirArchivo() {
+            const input = document.getElementById('archivoInput');
+            const archivo = input.files[0];
+            const btnSubir = document.getElementById('btnSubir');
+            const mensajeDiv = document.getElementById('mensaje');
+            
+            if (!archivo) {
+                mostrarMensaje('⚠️ Por favor selecciona un archivo primero', 'error');
+                return;
+            }
+            
+            // Deshabilitar botón mientras sube
+            btnSubir.disabled = true;
+            btnSubir.textContent = '⏳ Subiendo...';
+            mensajeDiv.className = 'mensaje';
+            mensajeDiv.style.display = 'none';
+            
+            try {
+                // Crear nombre único para el archivo
+                const nombreArchivo = Date.now() + '-' + archivo.name;
+                
+                console.log('Subiendo archivo:', nombreArchivo);
+                
+                // Subir a Supabase Storage
+                const { data, error } = await supabaseClient.storage
+                    .from('absence-files')
+                    .upload(nombreArchivo, archivo);
+                
+                if (error) {
+                    console.error('Error de Supabase:', error);
+                    throw error;
+                }
+                
+                console.log('Archivo subido:', data);
+                
+                // Obtener URL pública
+                const { data: urlData } = supabaseClient.storage
+                    .from('absence-files')
+                    .getPublicUrl(nombreArchivo);
+                
+                console.log('URL pública:', urlData.publicUrl);
+                
+                mostrarMensaje(
+                    `✅ ¡Archivo subido con éxito!<br><br>
+                    <strong>Nombre:</strong> ${archivo.name}<br>
+                    <a href="${urlData.publicUrl}" target="_blank" style="color: white; text-decoration: underline;">👁️ Ver archivo ahora</a>`,
+                    'exito'
+                );
+                
+                // Limpiar input
+                input.value = '';
+                
+                // Recargar lista después de 1 segundo
+                setTimeout(() => {
+                    cargarArchivos();
+                }, 1000);
+                
+            } catch (error) {
+                console.error('Error completo:', error);
+                mostrarMensaje('❌ Error al subir archivo: ' + error.message, 'error');
+            } finally {
+                // Rehabilitar botón
+                btnSubir.disabled = false;
+                btnSubir.textContent = '📤 Subir Archivo';
+            }
+        }
+        
+        // Función para cargar lista de archivos
+        async function cargarArchivos() {
+            const listaDiv = document.getElementById('listaArchivos');
+            listaDiv.innerHTML = '<p>⏳ Cargando archivos...</p>';
+            
+            try {
+                console.log('Cargando lista de archivos...');
+                
+                const { data, error } = await supabaseClient.storage
+                    .from('absence-files')
+                    .list('', {
+                        limit: 100,
+                        offset: 0,
+                        sortBy: { column: 'created_at', order: 'desc' }
+                    });
+                
+                if (error) {
+                    console.error('Error al listar:', error);
+                    throw error;
+                }
+                
+                console.log('Archivos encontrados:', data);
+                
+                if (!data || data.length === 0) {
+                    listaDiv.innerHTML = '<p>📭 No hay archivos subidos todavía.</p>';
+                    return;
+                }
+                
+                listaDiv.innerHTML = '';
+                
+                data.forEach(archivo => {
+                    // Ignorar carpetas
+                    if (archivo.id === null) return;
+                    
+                    const { data: urlData } = supabaseClient.storage
+                        .from('absence-files')
+                        .getPublicUrl(archivo.name);
+                    
+                    const div = document.createElement('div');
+                    div.className = 'archivo-item';
+                    div.innerHTML = `
+                        <span>📄 ${archivo.name}</span>
+                        <a href="${urlData.publicUrl}" target="_blank">👁️ Ver archivo</a>
+                    `;
+                    listaDiv.appendChild(div);
+                });
+                
+            } catch (error) {
+                console.error('Error completo al cargar:', error);
+                listaDiv.innerHTML = '<p style="color: red;">❌ Error al cargar archivos: ' + error.message + '</p>';
+            }
+        }
+        
+        // Función auxiliar para mostrar mensajes
+        function mostrarMensaje(texto, tipo) {
+            const mensajeDiv = document.getElementById('mensaje');
+            mensajeDiv.className = 'mensaje ' + tipo;
+            mensajeDiv.innerHTML = texto;
+        }
+        
+        // Cargar archivos cuando se abre la página
+        window.onload = function() {
+            console.log('Página cargada, iniciando...');
+            cargarArchivos();
+        };
+    </script>
+</body>
+</html>
