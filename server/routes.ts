@@ -6,11 +6,11 @@ import { storage } from "./storage.js";
 import { setupAuth } from "./auth.js";
 import { api } from "../shared/routes.js";
 import { z } from "zod";
-import { insertUserSchema, insertWorkLogSchema, insertAbsenceSchema } from "../shared/schema.js";
+import { insertUserSchema, insertWorkLogSchema, insertAbsenceSchema, insertCalendarEventSchema } from "../shared/schema.js";
 import { createClient } from '@supabase/supabase-js';
 
 import { db } from "./db.js";
-import { users, workLogs } from "../shared/schema.js";
+import { users, workLogs, calendarEvents } from "../shared/schema.js";
 import { eq, and, gte, lte } from "drizzle-orm";
 
 export async function registerRoutes(
@@ -25,8 +25,7 @@ export async function registerRoutes(
                         process.env.NEXT_PUBLIC_SUPABASE_URL || 
                         process.env.VITE_SUPABASE_URL || '';
   
-  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 
-                       process.env.SUPABASE_ANON_KEY || 
+  const supabaseKey = process.env.SUPABASE_ANON_KEY || 
                        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 
                        process.env.VITE_SUPABASE_ANON_KEY || '';
   
@@ -35,7 +34,6 @@ export async function registerRoutes(
       SUPABASE_URL: !!process.env.SUPABASE_URL,
       NEXT_PUBLIC_SUPABASE_URL: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
       VITE_SUPABASE_URL: !!process.env.VITE_SUPABASE_URL,
-      SUPABASE_SERVICE_ROLE_KEY: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
       SUPABASE_ANON_KEY: !!process.env.SUPABASE_ANON_KEY,
       NEXT_PUBLIC_SUPABASE_ANON_KEY: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
       VITE_SUPABASE_ANON_KEY: !!process.env.VITE_SUPABASE_ANON_KEY
@@ -352,6 +350,120 @@ export async function registerRoutes(
 
     const updated = await storage.updateAbsence(id, req.body);
     res.json(updated);
+  });
+
+  // === CALENDAR EVENTS ROUTES ===
+
+  // Get all events for a user (with optional date filtering)
+  app.get("/api/calendar/events", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
+    
+    const user = req.user as any;
+    const { startDate, endDate } = req.query;
+    
+    let events;
+    if (startDate && endDate) {
+      events = await db.select().from(calendarEvents)
+        .where(and(
+          eq(calendarEvents.userId, user.id),
+          gte(calendarEvents.date, startDate as string),
+          lte(calendarEvents.date, endDate as string)
+        ))
+        .orderBy(calendarEvents.date);
+    } else {
+      events = await db.select().from(calendarEvents)
+        .where(eq(calendarEvents.userId, user.id))
+        .orderBy(calendarEvents.date);
+    }
+    
+    res.json(events);
+  });
+
+  // Get a single event
+  app.get("/api/calendar/events/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
+    
+    const id = Number(req.params.id);
+    const event = await db.select().from(calendarEvents).where(eq(calendarEvents.id, id)).limit(1);
+    
+    if (!event.length) return res.status(404).json({ message: "Event not found" });
+    
+    const user = req.user as any;
+    if (event[0].userId !== user.id && user.role !== 'admin') {
+      return res.status(403).json({ message: "Access denied" });
+    }
+    
+    res.json(event[0]);
+  });
+
+  // Create a new event
+  app.post("/api/calendar/events", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
+    
+    try {
+      const eventData = insertCalendarEventSchema.parse(req.body);
+      const user = req.user as any;
+      
+      // Set default colors based on category
+      const categoryColors = {
+        examen: "#EF4444",      // red
+        entrega: "#F59E0B",     // amber  
+        presentacion: "#8B5CF6", // purple
+        evento_trabajo: "#3B82F6", // blue
+        evento_universidad: "#10B981" // green
+      };
+      
+      const eventWithColor = {
+        ...eventData,
+        userId: user.id,
+        color: eventData.color || categoryColors[eventData.category as keyof typeof categoryColors] || "#3B82F6"
+      };
+      
+      const [event] = await db.insert(calendarEvents).values(eventWithColor).returning();
+      res.status(201).json(event);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors[0].message });
+      }
+      throw err;
+    }
+  });
+
+  // Update an event
+  app.patch("/api/calendar/events/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
+    
+    const id = Number(req.params.id);
+    const existingEvent = await db.select().from(calendarEvents).where(eq(calendarEvents.id, id)).limit(1);
+    
+    if (!existingEvent.length) return res.status(404).json({ message: "Event not found" });
+    
+    const user = req.user as any;
+    if (existingEvent[0].userId !== user.id && user.role !== 'admin') {
+      return res.status(403).json({ message: "Access denied" });
+    }
+    
+    const updateData = { ...req.body, updatedAt: new Date() };
+    const [updated] = await db.update(calendarEvents).set(updateData).where(eq(calendarEvents.id, id)).returning();
+    res.json(updated);
+  });
+
+  // Delete an event
+  app.delete("/api/calendar/events/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
+    
+    const id = Number(req.params.id);
+    const existingEvent = await db.select().from(calendarEvents).where(eq(calendarEvents.id, id)).limit(1);
+    
+    if (!existingEvent.length) return res.status(404).json({ message: "Event not found" });
+    
+    const user = req.user as any;
+    if (existingEvent[0].userId !== user.id && user.role !== 'admin') {
+      return res.status(403).json({ message: "Access denied" });
+    }
+    
+    await db.delete(calendarEvents).where(eq(calendarEvents.id, id));
+    res.sendStatus(204);
   });
 
   app.delete("/api/users/:id", async (req, res) => {

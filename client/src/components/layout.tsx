@@ -3,10 +3,8 @@ import { Link, useLocation } from "wouter";
 import { 
   LogOut, 
   LayoutDashboard, 
-  CalendarClock, 
+  Calendar, 
   Users, 
-  Briefcase, 
-  FileClock,
   Menu,
   X
 } from "lucide-react";
@@ -25,19 +23,16 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     ? [
         { href: "/admin", label: "Panel", icon: LayoutDashboard },
         { href: "/admin/employees", label: "Empleados", icon: Users },
-        { href: "/admin/absences", label: "Ausencias", icon: CalendarClock },
       ]
     : [
-        { href: "/dashboard", label: "Mi Panel", icon: LayoutDashboard },
-        { href: "/dashboard/history", label: "Mis Horas", icon: FileClock },
-        { href: "/dashboard/absences", label: "Ausencias", icon: CalendarClock },
+        { href: "/dashboard", label: "Calendario", icon: Calendar },
       ];
 
   const NavContent = () => (
     <div className="flex flex-col h-full">
       <div className="p-6 border-b border-border/50">
         <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-blue-600">
-          Control Horario
+          Calendario
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
           {isAdmin ? "Portal Administrador" : "Portal Empleado"}
