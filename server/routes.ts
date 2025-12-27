@@ -133,20 +133,41 @@ export async function registerRoutes(
 
   app.post(api.users.create.path, async (req, res) => {
     // Only admins can create users, or if no users exist (initial setup)
-    const allUsers = await storage.getAllUsers();
+    const { data: allUsers, error: fetchError } = await supabase
+      .from('users')
+      .select('id');
+    
+    if (fetchError) {
+      console.log('Error fetching users:', fetchError);
+      return res.status(500).json({ message: "Error checking users" });
+    }
+    
     const isAdmin = req.isAuthenticated() && (req.user as any).role === 'admin';
     
-    if (allUsers.length > 0 && !isAdmin) {
+    if (allUsers && allUsers.length > 0 && !isAdmin) {
        return res.status(401).json({ message: "Unauthorized. Only admins can create users." });
     }
 
     try {
       const input = insertUserSchema.parse(req.body);
       const hashedPassword = await hashPassword(input.password);
-      const user = await storage.createUser({
-        ...input,
-        password: hashedPassword,
-      });
+      
+      const { data: user, error: createError } = await supabase
+        .from('users')
+        .insert({
+          username: input.username,
+          password: hashedPassword,
+          full_name: input.fullName,
+          role: input.role || 'employee'
+        })
+        .select()
+        .single();
+      
+      if (createError) {
+        console.log('Error creating user:', createError);
+        return res.status(500).json({ message: createError.message });
+      }
+      
       res.status(201).json(user);
     } catch (err) {
       if (err instanceof z.ZodError) {
@@ -176,14 +197,22 @@ export async function registerRoutes(
     
     try {
       const user = req.user as any;
+      console.log('Creating calendar event for user:', user.id);
+      console.log('Request body:', req.body);
+      
       const eventData = {
         user_id: user.id,
         title: req.body.title,
         description: req.body.description || null,
         category: req.body.category,
         date: req.body.date,
-        time: req.body.time || null
+        color: req.body.color || null,
+        time: req.body.time || null,
+        is_shared: false,
+        shared_by: null
       };
+      
+      console.log('Processed event data:', eventData);
       
       const { data, error } = await supabase
         .from('calendar_events')
@@ -191,9 +220,15 @@ export async function registerRoutes(
         .select()
         .single();
       
-      if (error) return res.status(500).json({ message: error.message });
+      if (error) {
+        console.log('Supabase error:', error);
+        return res.status(500).json({ message: error.message });
+      }
+      
+      console.log('Event created successfully:', data);
       res.status(201).json(data);
     } catch (err) {
+      console.log('Calendar event creation error:', err);
       if (err instanceof z.ZodError) {
         return res.status(400).json({ message: err.errors[0].message });
       }
@@ -364,7 +399,7 @@ export async function registerRoutes(
     
     try {
       const commentData = {
-        shared_event_id: eventId,
+        event_id: eventId,
         user_id: user.id,
         comment: comment.trim()
       };

@@ -25,8 +25,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
   const navItems = isAdmin
     ? [
-        { href: "/admin", label: "Panel", icon: LayoutDashboard },
-        { href: "/admin/users", label: "Usuarios", icon: Users },
+        { href: "/admin", label: "Panel Admin", icon: LayoutDashboard },
+        { href: "/admin/users", label: "Gestión Usuarios", icon: Users },
         { href: "/calendar/personal", label: "Mi Calendario", icon: Calendar },
         { href: "/calendar/shared", label: "Calendario Compartido", icon: Share2 },
       ]
