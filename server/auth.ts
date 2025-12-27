@@ -55,15 +55,67 @@ async function comparePasswords(supplied: string, stored: string) {
 }
 
 export function setupAuth(app: Express) {
-  // Use memorystore for session management in production
-  const MemoryStoreSession = MemoryStore(session);
-  const store = new MemoryStoreSession({
-    checkPeriod: 86400000 // 24 hours
-  });
+  // Simple in-memory session store for Vercel serverless
+  const sessions = new Map();
   
   app.use(session({
-    store,
-    secret: process.env.SESSION_SECRET || "your-secret-key",
+    store: {
+      get: (sid: string, callback: (err: any, data?: any) => void) => {
+        callback(null, sessions.get(sid) || null);
+      },
+      set: (sid: string, session: any, callback: (err?: any) => void) => {
+        sessions.set(sid, session);
+        callback();
+      },
+      destroy: (sid: string, callback: (err?: any) => void) => {
+        sessions.delete(sid);
+        callback();
+      },
+      regenerate: (sid: number, callback: (err?: any) => void) => {
+        const newSid = require('crypto').randomBytes(16).toString('hex');
+        callback();
+      },
+      load: (sid: string, callback: (err: any, session?: any) => void) => {
+        callback(null, sessions.get(sid) || null);
+      },
+      createSession: (req: any, callback: (err: any, session?: any) => void) => {
+        const session = {
+          cookie: {
+            originalMaxAge: 24 * 60 * 60 * 1000,
+            expires: new Date(Date.now() + 24 * 60 * 60 * 1000),
+            secure: process.env.NODE_ENV === "production",
+            httpOnly: true,
+            path: '/',
+            sameSite: "lax"
+          }
+        };
+        callback(null, session);
+      },
+      touch: (sid: string, session: any, callback: (err?: any) => void) => {
+        // Update expiration time
+        if (session.cookie) {
+          session.cookie.expires = new Date(Date.now() + 24 * 60 * 60 * 1000);
+        }
+        callback();
+      },
+      all: (callback: (err: any, obj?: any) => void) => {
+        callback(null, Array.from(sessions.entries()));
+      },
+      length: (callback: (err: any, length?: number) => void) => {
+        callback(null, sessions.size);
+      },
+      clear: (callback: (err?: any) => void) => {
+        sessions.clear();
+        callback();
+      },
+      ids: (callback: (err: any, ids?: string[]) => void) => {
+        callback(null, Array.from(sessions.keys()));
+      },
+      addListener: () => {},
+      removeListener: () => {},
+      listeners: () => []
+    } as any,
+    secret: process.env.SESSION_SECRET || "your-secret-key-change-in-production",
     resave: false,
     saveUninitialized: false,
     cookie: {
