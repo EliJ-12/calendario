@@ -2,7 +2,7 @@ import dotenv from 'dotenv';
 dotenv.config({ path: '.env.local' });
 
 import { serveStatic } from "./static.js";
-import { setupAuth } from "./auth-supabase.js";
+import { setupAuth } from "./auth.js";
 import { createApp } from "./app.js";
 import express from 'express';
 

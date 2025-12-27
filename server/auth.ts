@@ -6,32 +6,8 @@ import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { storage } from "./storage.js";
 import { User } from "../shared/schema.js";
-import { createClient } from '@supabase/supabase-js';
 
 const scryptAsync = promisify(scrypt);
-
-// Initialize Supabase client for sessions
-const supabaseUrl = process.env.SUPABASE_URL || 
-                        process.env.NEXT_PUBLIC_SUPABASE_URL || 
-                        process.env.VITE_SUPABASE_URL || '';
-  
-const supabaseKey = process.env.SUPABASE_ANON_KEY || 
-                     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 
-                     process.env.VITE_SUPABASE_ANON_KEY || '';
-
-if (!supabaseUrl || !supabaseKey) {
-  console.error('Missing Supabase environment variables. Available env vars:', {
-    SUPABASE_URL: !!process.env.SUPABASE_URL,
-    NEXT_PUBLIC_SUPABASE_URL: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
-    VITE_SUPABASE_URL: !!process.env.VITE_SUPABASE_URL,
-    SUPABASE_ANON_KEY: !!process.env.SUPABASE_ANON_KEY,
-    NEXT_PUBLIC_SUPABASE_ANON_KEY: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-    VITE_SUPABASE_ANON_KEY: !!process.env.VITE_SUPABASE_ANON_KEY
-  });
-  throw new Error('Supabase configuration is missing. Please check your environment variables.');
-}
-
-const supabase = createClient(supabaseUrl, supabaseKey);
 
 async function hashPassword(password: string) {
   const salt = randomBytes(16).toString("hex");
@@ -53,55 +29,22 @@ async function comparePasswords(supplied: string, stored: string) {
 }
 
 export function setupAuth(app: Express) {
-  const sessionStore = session({
+  // Simple memory session store for Vercel
+  const sessionStore = new Map();
+  
+  app.use(session({
     store: new (session.Store as any)({
-      // Use Supabase for session storage
-      async: true,
-      async get(sid: any, callback: any) {
-        try {
-          const { data } = await supabase
-            .from('sessions')
-            .select('*')
-            .eq('session_id', sid)
-            .single();
-          
-          if (data && new Date(data.expires_at) > new Date()) {
-            callback(null, data);
-          } else {
-            callback(null, null);
-          }
-        } catch (error) {
-          callback(error);
-        }
+      get: (sid: any, callback: any) => {
+        const sessionData = sessionStore.get(sid);
+        callback(null, sessionData || null);
       },
-      async set(sid: any, session: any, callback: any) {
-        try {
-          const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
-          await supabase
-            .from('sessions')
-            .upsert({
-              session_id: sid,
-              user_id: session.passport?.user,
-              created_at: new Date().toISOString(),
-              expires_at: expiresAt.toISOString(),
-              ip_address: session.ip,
-              user_agent: session.userAgent
-            });
-          callback(null);
-        } catch (error) {
-          callback(error);
-        }
+      set: (sid: any, session: any, callback: any) => {
+        sessionStore.set(sid, session);
+        callback(null);
       },
-      async destroy(sid: any, callback: any) {
-        try {
-          await supabase
-            .from('sessions')
-            .delete()
-            .eq('session_id', sid);
-          callback(null);
-        } catch (error) {
-          callback(error);
-        }
+      destroy: (sid: any, callback: any) => {
+        sessionStore.delete(sid);
+        callback(null);
       }
     }),
     secret: process.env.SESSION_SECRET || "your-secret-key",
@@ -113,26 +56,31 @@ export function setupAuth(app: Express) {
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax"
     }
-  });
+  }));
 
-  app.use(sessionStore);
+  app.use(passport.session());
 
   passport.use(
     new LocalStrategy(async (username, password, done) => {
       try {
+        console.log('Auth attempt for username:', username);
         const user = await storage.getUserByUsername(username);
+        console.log('User found:', !!user);
+        
         if (!user || !(await comparePasswords(password, user.password))) {
+          console.log('Auth failed');
           return done(null, false);
         } else {
+          console.log('Auth successful for user:', user.username);
           return done(null, user);
         }
       } catch (err) {
+        console.log('Auth error:', err);
         return done(err);
       }
     }),
   );
 
-  app.use(passport.session());
   passport.serializeUser((user, done) => done(null, (user as User).id));
   passport.deserializeUser(async (id: number, done) => {
     try {
@@ -144,6 +92,7 @@ export function setupAuth(app: Express) {
   });
 
   app.post("/api/auth/login", passport.authenticate("local"), (req, res) => {
+    console.log('Login successful, user:', req.user);
     res.status(200).json(req.user);
   });
 
