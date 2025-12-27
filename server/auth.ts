@@ -5,6 +5,7 @@ import session from "express-session";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import bcrypt from "bcrypt";
+import MemoryStore from "memorystore";
 import { storage } from "./storage.js";
 import { User } from "../shared/schema.js";
 
@@ -54,38 +55,14 @@ async function comparePasswords(supplied: string, stored: string) {
 }
 
 export function setupAuth(app: Express) {
-  // Simple memory session store for Vercel
-  const sessionStore = new Map();
+  // Use memorystore for session management in production
+  const MemoryStoreSession = MemoryStore(session);
+  const store = new MemoryStoreSession({
+    checkPeriod: 86400000 // 24 hours
+  });
   
   app.use(session({
-    store: new (session.Store as any)({
-      get: (sid: any, callback: any) => {
-        const sessionData = sessionStore.get(sid);
-        callback(null, sessionData || null);
-      },
-      set: (sid: any, session: any, callback: any) => {
-        sessionStore.set(sid, session);
-        callback(null);
-      },
-      destroy: (sid: any, callback: any) => {
-        sessionStore.delete(sid);
-        callback(null);
-      },
-      regenerate: (req: any, callback: any) => {
-        // Generate new session ID and copy data
-        const oldSid = req.sessionID;
-        const newSid = randomBytes(16).toString('hex');
-        const sessionData = sessionStore.get(oldSid);
-        
-        if (sessionData) {
-          sessionStore.set(newSid, sessionData);
-          sessionStore.delete(oldSid);
-          req.sessionID = newSid;
-        }
-        
-        callback(null, newSid);
-      }
-    }),
+    store,
     secret: process.env.SESSION_SECRET || "your-secret-key",
     resave: false,
     saveUninitialized: false,
