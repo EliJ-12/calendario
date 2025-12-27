@@ -6,11 +6,11 @@ import { storage } from "./storage.js";
 import { setupAuth } from "./auth.js";
 import { api } from "../shared/routes.js";
 import { z } from "zod";
-import { insertUserSchema, insertEventSchema, insertSharedEventSchema, insertEventCommentSchema } from "../shared/schema.js";
+import { insertUserSchema, insertCalendarEventSchema, insertSharedEventSchema, insertEventCommentSchema } from "../shared/schema.js";
 import { createClient } from '@supabase/supabase-js';
 
 import { db } from "./db.js";
-import { users, events, sharedEvents, eventComments } from "../shared/schema.js";
+import { users, calendarEvents, sharedEvents, eventComments } from "../shared/schema.js";
 import { eq, and, gte, lte, desc } from "drizzle-orm";
 
 export async function registerRoutes(
@@ -95,9 +95,9 @@ export async function registerRoutes(
       
       console.log('Uploading to path:', filePath);
       
-      // Upload to Supabase Storage (for potential future file attachments)
+      // Upload to Supabase Storage
       const { data, error } = await supabase.storage
-        .from('calendar-files')
+        .from('absence-files')
         .upload(filePath, req.file.buffer, {
           contentType: req.file.mimetype,
           upsert: false
@@ -110,7 +110,7 @@ export async function registerRoutes(
 
       // Get public URL
       const { data: { publicUrl } } = supabase.storage
-        .from('calendar-files')
+        .from('absence-files')
         .getPublicUrl(filePath);
 
       console.log('Upload successful, public URL:', publicUrl);
@@ -157,35 +157,35 @@ export async function registerRoutes(
   });
 
   // === Calendar Events ===
-  app.get("/api/events", async (req, res) => {
+  app.get(api.calendarEvents.list.path, async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
     
     const user = req.user as any;
-    const userId = user.id;
-    const startDate = req.query.startDate as string;
-    const endDate = req.query.endDate as string;
+    const userId = user.role === 'admin' && req.query.userId ? 
+      Number(req.query.userId) : user.id;
 
-    let query = db.select().from(events).where(eq(events.userId, userId));
-    
-    if (startDate && endDate) {
-      query = db.select().from(events).where(and(
-        eq(events.userId, userId),
-        gte(events.date, startDate),
-        lte(events.date, endDate)
-      ));
+    const conditions = [];
+    if (userId !== undefined) conditions.push(eq(calendarEvents.userId, userId));
+    if (req.query.startDate) conditions.push(gte(calendarEvents.eventDate, req.query.startDate as string));
+    if (req.query.endDate) conditions.push(lte(calendarEvents.eventDate, req.query.endDate as string));
+    if (req.query.category) conditions.push(eq(calendarEvents.category, req.query.category as any));
+
+    let query = db.select().from(calendarEvents);
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions));
     }
     
-    const eventsList = await query.orderBy(desc(events.date));
-    res.json(eventsList);
+    const events = await query.orderBy(desc(calendarEvents.eventDate));
+    res.json(events);
   });
 
-  app.post("/api/events", async (req, res) => {
+  app.post(api.calendarEvents.create.path, async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
     
     try {
-      const input = insertEventSchema.parse(req.body);
+      const input = insertCalendarEventSchema.parse(req.body);
       
-      const event = await db.insert(events).values({
+      const event = await db.insert(calendarEvents).values({
         ...input,
         userId: (req.user as any).id
       }).returning();
@@ -199,90 +199,181 @@ export async function registerRoutes(
     }
   });
 
-  app.patch("/api/events/:id", async (req, res) => {
+  app.patch(api.calendarEvents.update.path, async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
     
     const id = Number(req.params.id);
-    const existing = await db.select().from(events).where(eq(events.id, id)).limit(1);
+    const [existing] = await db.select().from(calendarEvents).where(eq(calendarEvents.id, id));
     
-    if (!existing.length) return res.status(404).json({ message: "Event not found" });
+    if (!existing) return res.status(404).json({ message: "Not found" });
     
     const user = req.user as any;
-    if (existing[0].userId !== user.id) {
+    if (user.role !== 'admin' && existing.userId !== user.id) {
       return res.status(403).json({ message: "Cannot edit this event" });
     }
 
-    const updated = await db.update(events)
-      .set({ ...req.body, updatedAt: new Date() })
-      .where(eq(events.id, id))
+    const [updated] = await db.update(calendarEvents)
+      .set(req.body)
+      .where(eq(calendarEvents.id, id))
       .returning();
     
-    res.json(updated[0]);
+    res.json(updated);
   });
 
-  app.delete("/api/events/:id", async (req, res) => {
+  app.delete(api.calendarEvents.delete.path, async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
     
     const id = Number(req.params.id);
-    const existing = await db.select().from(events).where(eq(events.id, id)).limit(1);
+    const [existing] = await db.select().from(calendarEvents).where(eq(calendarEvents.id, id));
     
-    if (!existing.length) return res.status(404).json({ message: "Event not found" });
+    if (!existing) return res.status(404).json({ message: "Not found" });
     
     const user = req.user as any;
-    if (existing[0].userId !== user.id) {
+    if (user.role !== 'admin' && existing.userId !== user.id) {
       return res.status(403).json({ message: "Cannot delete this event" });
     }
 
-    await db.delete(events).where(eq(events.id, id));
+    await db.delete(calendarEvents).where(eq(calendarEvents.id, id));
     res.sendStatus(204);
   });
 
   // === Shared Events ===
-  app.get("/api/shared-events", async (req, res) => {
+  app.get(api.sharedEvents.list.path, async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
-    
+
+    // Get basic shared events with original event info
     const sharedEventsList = await db
       .select({
-        sharedEvent: sharedEvents,
-        event: events,
-        sharedBy: users,
+        id: sharedEvents.id,
+        originalEventId: sharedEvents.originalEventId,
+        sharedByUserId: sharedEvents.sharedByUserId,
+        sharedAt: sharedEvents.sharedAt,
+        isActive: sharedEvents.isActive,
       })
       .from(sharedEvents)
-      .innerJoin(events, eq(sharedEvents.eventId, events.id))
-      .innerJoin(users, eq(sharedEvents.sharedBy, users.id))
+      .where(eq(sharedEvents.isActive, true))
       .orderBy(desc(sharedEvents.sharedAt));
-    
-    res.json(sharedEventsList);
+
+    // Get detailed info for each shared event
+    const eventsWithDetails = await Promise.all(
+      sharedEventsList.map(async (sharedEvent) => {
+        // Get original event with user info
+        const [originalEvent] = await db
+          .select({
+            id: calendarEvents.id,
+            title: calendarEvents.title,
+            description: calendarEvents.description,
+            category: calendarEvents.category,
+            eventDate: calendarEvents.eventDate,
+            eventTime: calendarEvents.eventTime,
+            userId: calendarEvents.userId,
+            isShared: calendarEvents.isShared,
+            createdAt: calendarEvents.createdAt,
+            updatedAt: calendarEvents.updatedAt,
+            user: {
+              id: users.id,
+              username: users.username,
+              fullName: users.fullName,
+              role: users.role,
+              createdAt: users.createdAt,
+              updatedAt: users.updatedAt,
+            }
+          })
+          .from(calendarEvents)
+          .innerJoin(users, eq(calendarEvents.userId, users.id))
+          .where(eq(calendarEvents.id, sharedEvent.originalEventId));
+
+        // Get shared by user info
+        const [sharedByUser] = await db
+          .select({
+            id: users.id,
+            username: users.username,
+            fullName: users.fullName,
+            role: users.role,
+            createdAt: users.createdAt,
+            updatedAt: users.updatedAt,
+          })
+          .from(users)
+          .where(eq(users.id, sharedEvent.sharedByUserId));
+
+        // Get comments
+        const comments = await db
+          .select({
+            id: eventComments.id,
+            comment: eventComments.comment,
+            createdAt: eventComments.createdAt,
+            user: {
+              id: users.id,
+              username: users.username,
+              fullName: users.fullName,
+              role: users.role,
+            }
+          })
+          .from(eventComments)
+          .innerJoin(users, eq(eventComments.userId, users.id))
+          .where(eq(eventComments.sharedEventId, sharedEvent.id))
+          .orderBy(eventComments.createdAt);
+
+        return {
+          ...sharedEvent,
+          originalEvent: originalEvent,
+          sharedByUser: sharedByUser,
+          comments
+        };
+      })
+    );
+
+    res.json(eventsWithDetails);
   });
 
-  app.post("/api/shared-events", async (req, res) => {
+  app.post(api.sharedEvents.create.path, async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
     
     try {
-      const input = insertSharedEventSchema.parse(req.body);
-      const user = req.user as any;
+      const { originalEventId } = req.body;
+      const userId = (req.user as any).id;
       
-      // Check if user owns the event
-      const event = await db.select().from(events).where(eq(events.id, input.eventId)).limit(1);
-      if (!event.length || event[0].userId !== user.id) {
-        return res.status(403).json({ message: "Cannot share this event" });
+      // Check if the original event exists and belongs to the user
+      const [originalEvent] = await db
+        .select()
+        .from(calendarEvents)
+        .where(eq(calendarEvents.id, originalEventId));
+      
+      if (!originalEvent) {
+        return res.status(404).json({ message: "Original event not found" });
+      }
+      
+      if (originalEvent.userId !== userId) {
+        return res.status(403).json({ message: "Cannot share events that don't belong to you" });
       }
       
       // Check if already shared
-      const alreadyShared = await db.select().from(sharedEvents)
-        .where(and(eq(sharedEvents.eventId, input.eventId), eq(sharedEvents.sharedBy, user.id)))
-        .limit(1);
+      const [existingShared] = await db
+        .select()
+        .from(sharedEvents)
+        .where(and(
+          eq(sharedEvents.originalEventId, originalEventId),
+          eq(sharedEvents.sharedByUserId, userId),
+          eq(sharedEvents.isActive, true)
+        ));
       
-      if (alreadyShared.length) {
+      if (existingShared) {
         return res.status(409).json({ message: "Event already shared" });
       }
       
-      const sharedEvent = await db.insert(sharedEvents).values({
-        ...input,
-        sharedBy: user.id
-      }).returning();
+      const [sharedEvent] = await db.insert(sharedEvents)
+        .values({
+          originalEventId,
+          sharedByUserId: userId
+        })
+        .returning();
       
-      res.status(201).json(sharedEvent[0]);
+      // Mark the original event as shared
+      await db.update(calendarEvents)
+        .set({ isShared: true })
+        .where(eq(calendarEvents.id, originalEventId));
+      
+      res.status(201).json(sharedEvent);
     } catch (err) {
       if (err instanceof z.ZodError) {
         return res.status(400).json({ message: err.errors[0].message });
@@ -291,78 +382,70 @@ export async function registerRoutes(
     }
   });
 
-  app.delete("/api/shared-events/:id", async (req, res) => {
+  app.delete(api.sharedEvents.delete.path, async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
     
     const id = Number(req.params.id);
+    const [existing] = await db.select().from(sharedEvents).where(eq(sharedEvents.id, id));
+    
+    if (!existing) return res.status(404).json({ message: "Not found" });
+    
     const user = req.user as any;
-    
-    // Check if user owns the shared event (can only unshare their own)
-    const existing = await db
-      .select({
-        sharedEvent: sharedEvents,
-        event: events
-      })
-      .from(sharedEvents)
-      .innerJoin(events, eq(sharedEvents.eventId, events.id))
-      .where(eq(sharedEvents.id, id))
-      .limit(1);
-    
-    if (!existing.length) return res.status(404).json({ message: "Shared event not found" });
-    if (existing[0].event.userId !== user.id) {
-      return res.status(403).json({ message: "Cannot unshare this event" });
+    if (user.role !== 'admin' && existing.sharedByUserId !== user.id) {
+      return res.status(403).json({ message: "Cannot delete this shared event" });
     }
 
-    await db.delete(sharedEvents).where(eq(sharedEvents.id, id));
+    await db.update(sharedEvents)
+      .set({ isActive: false })
+      .where(eq(sharedEvents.id, id));
+    
+    // Check if there are any other active shares for this event
+    const [otherShares] = await db
+      .select()
+      .from(sharedEvents)
+      .where(and(
+        eq(sharedEvents.originalEventId, existing.originalEventId),
+        eq(sharedEvents.isActive, true)
+      ));
+    
+    if (!otherShares) {
+      // Mark the original event as not shared
+      await db.update(calendarEvents)
+        .set({ isShared: false })
+        .where(eq(calendarEvents.id, existing.originalEventId));
+    }
+    
     res.sendStatus(204);
   });
 
   // === Event Comments ===
-  app.get("/api/events/:eventId/comments", async (req, res) => {
-    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
-    
-    const eventId = Number(req.params.eventId);
-    
-    // Check if event is shared
-    const isShared = await db.select().from(sharedEvents).where(eq(sharedEvents.eventId, eventId)).limit(1);
-    if (!isShared.length) {
-      return res.status(403).json({ message: "Event is not shared" });
-    }
-    
-    const comments = await db
-      .select({
-        comment: eventComments,
-        user: users
-      })
-      .from(eventComments)
-      .innerJoin(users, eq(eventComments.userId, users.id))
-      .where(eq(eventComments.eventId, eventId))
-      .orderBy(desc(eventComments.createdAt));
-    
-    res.json(comments);
-  });
-
-  app.post("/api/events/:eventId/comments", async (req, res) => {
+  app.post(api.eventComments.create.path, async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
     
     try {
-      const eventId = Number(req.params.eventId);
-      const { comment } = req.body;
-      const user = req.user as any;
+      const input = insertEventCommentSchema.parse(req.body);
       
-      // Check if event is shared
-      const isShared = await db.select().from(sharedEvents).where(eq(sharedEvents.eventId, eventId)).limit(1);
-      if (!isShared.length) {
-        return res.status(403).json({ message: "Event is not shared" });
+      // Verify the shared event exists and is active
+      const [sharedEvent] = await db
+        .select()
+        .from(sharedEvents)
+        .where(and(
+          eq(sharedEvents.id, input.sharedEventId),
+          eq(sharedEvents.isActive, true)
+        ));
+      
+      if (!sharedEvent) {
+        return res.status(404).json({ message: "Shared event not found" });
       }
       
-      const newComment = await db.insert(eventComments).values({
-        eventId,
-        userId: user.id,
-        comment
-      }).returning();
+      const [comment] = await db.insert(eventComments)
+        .values({
+          ...input,
+          userId: (req.user as any).id
+        })
+        .returning();
       
-      res.status(201).json(newComment[0]);
+      res.status(201).json(comment);
     } catch (err) {
       if (err instanceof z.ZodError) {
         return res.status(400).json({ message: err.errors[0].message });
@@ -371,35 +454,16 @@ export async function registerRoutes(
     }
   });
 
-  app.patch("/api/comments/:id", async (req, res) => {
+  app.delete(api.eventComments.delete.path, async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
     
     const id = Number(req.params.id);
+    const [existing] = await db.select().from(eventComments).where(eq(eventComments.id, id));
+    
+    if (!existing) return res.status(404).json({ message: "Not found" });
+    
     const user = req.user as any;
-    
-    const existing = await db.select().from(eventComments).where(eq(eventComments.id, id)).limit(1);
-    if (!existing.length) return res.status(404).json({ message: "Comment not found" });
-    if (existing[0].userId !== user.id) {
-      return res.status(403).json({ message: "Cannot edit this comment" });
-    }
-
-    const updated = await db.update(eventComments)
-      .set({ comment: req.body.comment })
-      .where(eq(eventComments.id, id))
-      .returning();
-    
-    res.json(updated[0]);
-  });
-
-  app.delete("/api/comments/:id", async (req, res) => {
-    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
-    
-    const id = Number(req.params.id);
-    const user = req.user as any;
-    
-    const existing = await db.select().from(eventComments).where(eq(eventComments.id, id)).limit(1);
-    if (!existing.length) return res.status(404).json({ message: "Comment not found" });
-    if (existing[0].userId !== user.id) {
+    if (user.role !== 'admin' && existing.userId !== user.id) {
       return res.status(403).json({ message: "Cannot delete this comment" });
     }
 
