@@ -6,32 +6,9 @@ import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { storage } from "./storage.js";
 import { User } from "../shared/schema.js";
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from "./supabase-secure.js";
 
 const scryptAsync = promisify(scrypt);
-
-// Initialize Supabase client for sessions
-const supabaseUrl = process.env.SUPABASE_URL || 
-                        process.env.NEXT_PUBLIC_SUPABASE_URL || 
-                        process.env.VITE_SUPABASE_URL || '';
-  
-const supabaseKey = process.env.SUPABASE_ANON_KEY || 
-                     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 
-                     process.env.VITE_SUPABASE_ANON_KEY || '';
-
-if (!supabaseUrl || !supabaseKey) {
-  console.error('Missing Supabase environment variables. Available env vars:', {
-    SUPABASE_URL: !!process.env.SUPABASE_URL,
-    NEXT_PUBLIC_SUPABASE_URL: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
-    VITE_SUPABASE_URL: !!process.env.VITE_SUPABASE_URL,
-    SUPABASE_ANON_KEY: !!process.env.SUPABASE_ANON_KEY,
-    NEXT_PUBLIC_SUPABASE_ANON_KEY: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-    VITE_SUPABASE_ANON_KEY: !!process.env.VITE_SUPABASE_ANON_KEY
-  });
-  throw new Error('Supabase configuration is missing. Please check your environment variables.');
-}
-
-const supabase = createClient(supabaseUrl, supabaseKey);
 
 async function hashPassword(password: string) {
   const salt = randomBytes(16).toString("hex");
