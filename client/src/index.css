@@ -8,7 +8,7 @@
   --font-sans: 'Inter', sans-serif;
   --font-display: 'Outfit', sans-serif;
 
-  /* Corporate Red Palette - Modern & Bold */
+  /* Calendar Red Palette - Modern & Vibrant */
   --background: 210 40% 98%;
   --foreground: 222 47% 11%;
 
@@ -18,7 +18,7 @@
   --popover: 0 0% 100%;
   --popover-foreground: 222 47% 11%;
 
-  --primary: 0 79% 63%; /* #FF3E40 */
+  --primary: 354 100% 63%; /* #FF3E40 */
   --primary-foreground: 210 40% 98%;
 
   --secondary: 210 40% 96%;
@@ -35,7 +35,7 @@
 
   --border: 214 32% 91%;
   --input: 214 32% 91%;
-  --ring: 0 79% 63%;
+  --ring: 354 100% 63%;
 
   --radius: 0.75rem;
 }
@@ -50,24 +50,24 @@
   --popover: 217 33% 17%;
   --popover-foreground: 210 40% 98%;
 
-  --primary: 0 79% 63%;
-  --primary-foreground: 222 47% 11%;
+  --primary: 354 100% 63%; /* #FF3E40 */
+  --primary-foreground: 210 40% 98%;
 
-  --secondary: 217 19% 27%;
-  --secondary-foreground: 210 40% 98%;
+  --secondary: 210 40% 96%;
+  --secondary-foreground: 222 47% 11%;
 
-  --muted: 217 19% 27%;
-  --muted-foreground: 215 20% 65%;
+  --muted: 215 16% 94%;
+  --muted-foreground: 215 16% 47%;
 
-  --accent: 217 19% 27%;
-  --accent-foreground: 210 40% 98%;
+  --accent: 210 40% 96%;
+  --accent-foreground: 222 47% 11%;
 
-  --destructive: 0 62% 30%;
+  --destructive: 0 84% 60%;
   --destructive-foreground: 210 40% 98%;
 
-  --border: 217 19% 27%;
-  --input: 217 19% 27%;
-  --ring: 0 79% 63%;
+  --border: 214 32% 91%;
+  --input: 214 32% 91%;
+  --ring: 354 100% 63%;
 }
 
 @layer base {

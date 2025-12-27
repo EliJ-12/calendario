@@ -11,7 +11,7 @@ import AuthPage from "@/pages/auth-page";
 import PersonalCalendar from "@/pages/calendar/personal";
 import SharedCalendar from "@/pages/calendar/shared";
 import AdminDashboard from "@/pages/admin/dashboard";
-import AdminEmployees from "@/pages/admin/users";
+import AdminEmployees from "@/pages/admin/employees";
 
 // Protected Route Component
 function ProtectedRoute({ 
@@ -36,7 +36,7 @@ function ProtectedRoute({
   }
 
   if (!allowedRoles.includes(user.role as any)) {
-    return <Redirect to={user.role === 'admin' ? '/admin' : '/dashboard'} />;
+    return <Redirect to={user.role === 'admin' ? '/admin' : '/calendar'} />;
   }
 
   return <Component />;
@@ -47,15 +47,18 @@ function Router() {
     <Switch>
       <Route path="/auth" component={AuthPage} />
       
-      {/* Employee Routes */}
-      <Route path="/dashboard">
-        <ProtectedRoute component={PersonalCalendar} allowedRoles={['employee', 'admin']} />
-      </Route>
-      <Route path="/calendar/personal">
-        <ProtectedRoute component={PersonalCalendar} allowedRoles={['employee', 'admin']} />
+      {/* Calendar Routes - Both users and admins */}
+      <Route path="/calendar">
+        {() => {
+          const { user } = useAuth();
+          return user ? <PersonalCalendar user={user} /> : <Redirect to="/auth" />;
+        }}
       </Route>
       <Route path="/calendar/shared">
-        <ProtectedRoute component={SharedCalendar} allowedRoles={['employee', 'admin']} />
+        {() => {
+          const { user } = useAuth();
+          return user ? <SharedCalendar user={user} /> : <Redirect to="/auth" />;
+        }}
       </Route>
 
       {/* Admin Routes */}
@@ -65,16 +68,14 @@ function Router() {
       <Route path="/admin/employees">
         <ProtectedRoute component={AdminEmployees} allowedRoles={['admin']} />
       </Route>
-      <Route path="/admin/calendar">
-        <ProtectedRoute component={PersonalCalendar} allowedRoles={['admin']} />
-      </Route>
-      <Route path="/admin/calendar/shared">
-        <ProtectedRoute component={SharedCalendar} allowedRoles={['admin']} />
-      </Route>
 
-      {/* Redirect root based on auth is handled in login, but fallback: */}
+      {/* Redirect root based on role */}
       <Route path="/">
-        <Redirect to="/auth" />
+        {() => {
+          const { user } = useAuth();
+          if (!user) return <Redirect to="/auth" />;
+          return <Redirect to={user.role === 'admin' ? '/admin' : '/calendar'} />;
+        }}
       </Route>
 
       <Route component={NotFound} />

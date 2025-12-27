@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { Briefcase, Loader2, Calendar } from "lucide-react";
+import { Calendar, Loader2 } from "lucide-react";
 
 export default function AuthPage() {
   const [username, setUsername] = useState("");

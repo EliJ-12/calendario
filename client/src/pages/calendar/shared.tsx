@@ -1,105 +1,34 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Calendar, dateFnsLocalizer } from "react-big-calendar";
-import { format, parse, startOfWeek, getDay } from "date-fns";
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths } from "date-fns";
 import { es } from "date-fns/locale";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Calendar, ChevronLeft, ChevronRight, MessageSquare, User, Clock, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { CalendarIcon, MessageSquare, Trash2, User, Clock } from "lucide-react";
-import { api } from "../../../shared/routes";
-import { useAuth } from "@/hooks/use-auth";
-import "react-big-calendar/lib/css/react-big-calendar.css";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
+import { api } from "@/shared/routes";
+import { SharedEventWithDetails, EventCategory, InsertSharedEventComment } from "@/shared/schema";
 
-const locales = {
-  es: es,
-};
-
-const localizer = dateFnsLocalizer({
-  format,
-  parse,
-  startOfWeek,
-  getDay,
-  locales,
-});
-
-const categoryColors = {
-  examen: "#FF3E40",
-  entrega: "#FFA500",
-  presentacion: "#32CD32",
-  evento_trabajo: "#4169E1",
-  evento_universidad: "#9370DB",
-};
-
-const categoryLabels = {
-  examen: "Examen",
-  entrega: "Entrega",
-  presentacion: "Presentación",
-  evento_trabajo: "Evento trabajo",
-  evento_universidad: "Evento universidad",
-};
-
-interface SharedEventWithDetails {
-  id: number;
-  originalEventId: number;
-  sharedByUserId: number;
-  sharedAt: string;
-  isActive: boolean;
-  originalEvent: {
-    id: number;
-    title: string;
-    description: string | null;
-    category: string;
-    eventDate: string;
-    eventTime: string | null;
-    userId: number;
-    isShared: boolean;
-    createdAt: string;
-    updatedAt: string;
-    user: {
-      id: number;
-      username: string;
-      fullName: string;
-      role: string;
-      createdAt: string;
-      updatedAt: string;
-    };
-  };
-  sharedByUser: {
-    id: number;
-    username: string;
-    fullName: string;
-    role: string;
-    createdAt: string;
-    updatedAt: string;
-  };
-  comments: Array<{
-    id: number;
-    comment: string;
-    createdAt: string;
-    user: {
-      id: number;
-      username: string;
-      fullName: string;
-      role: string;
-    };
-  }>;
+interface SharedCalendarProps {
+  user: any;
 }
 
-export default function SharedCalendar() {
-  const { user } = useAuth();
-  const queryClient = useQueryClient();
+export default function SharedCalendar({ user }: SharedCalendarProps) {
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [showEventDetails, setShowEventDetails] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<SharedEventWithDetails | null>(null);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [commentText, setCommentText] = useState("");
+  const [newComment, setNewComment] = useState("");
+  const queryClient = useQueryClient();
 
   // Fetch shared events
-  const { data: sharedEvents = [], isLoading } = useQuery({
+  const { data: events = [], isLoading } = useQuery({
     queryKey: ["shared-events"],
     queryFn: async () => {
       const response = await fetch(api.sharedEvents.list.path);
@@ -108,88 +37,63 @@ export default function SharedCalendar() {
     },
   });
 
+  // Fetch event categories
+  const { data: categories = [] } = useQuery({
+    queryKey: ["event-categories"],
+    queryFn: async () => {
+      const response = await fetch(api.eventCategories.list.path);
+      if (!response.ok) throw new Error("Failed to fetch categories");
+      return response.json() as Promise<EventCategory[]>;
+    },
+  });
+
   // Add comment mutation
   const addCommentMutation = useMutation({
-    mutationFn: async ({ sharedEventId, comment }: { sharedEventId: number; comment: string }) => {
-      const response = await fetch(api.eventComments.create.path, {
+    mutationFn: async ({ eventId, comment }: { eventId: number; comment: string }) => {
+      const response = await fetch(api.sharedEventComments.create.path.replace(":eventId", eventId.toString()), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sharedEventId, comment }),
+        body: JSON.stringify({ comment }),
       });
       if (!response.ok) throw new Error("Failed to add comment");
       return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["shared-events"] });
-      setCommentText("");
+      setNewComment("");
     },
   });
 
-  // Delete comment mutation
-  const deleteCommentMutation = useMutation({
-    mutationFn: async (commentId: number) => {
-      const response = await fetch(api.eventComments.delete.path.replace(":id", commentId.toString()), {
-        method: "DELETE",
-      });
-      if (!response.ok) throw new Error("Failed to delete comment");
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["shared-events"] });
-    },
-  });
+  const monthStart = startOfMonth(currentDate);
+  const monthEnd = endOfMonth(currentDate);
+  const monthDays = eachDayOfInterval({ start: monthStart, end: monthEnd });
 
-  // Delete shared event mutation
-  const deleteSharedEventMutation = useMutation({
-    mutationFn: async (sharedEventId: number) => {
-      const response = await fetch(api.sharedEvents.delete.path.replace(":id", sharedEventId.toString()), {
-        method: "DELETE",
-      });
-      if (!response.ok) throw new Error("Failed to delete shared event");
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["shared-events"] });
-      setIsDialogOpen(false);
-    },
-  });
-
-  const handleAddComment = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (selectedEvent && commentText.trim()) {
-      addCommentMutation.mutate({
-        sharedEventId: selectedEvent.id,
-        comment: commentText.trim(),
-      });
-    }
+  const eventsForDate = (date: Date) => {
+    return events.filter((event: SharedEventWithDetails) => 
+      isSameDay(new Date(event.date), date)
+    );
   };
 
-  const handleDeleteComment = (commentId: number) => {
-    if (confirm("¿Estás seguro de que quieres eliminar este comentario?")) {
-      deleteCommentMutation.mutate(commentId);
-    }
+  const handleAddComment = () => {
+    if (!selectedEvent || !newComment.trim()) return;
+    
+    addCommentMutation.mutate({
+      eventId: selectedEvent.id,
+      comment: newComment.trim(),
+    });
   };
 
-  const handleDeleteSharedEvent = (sharedEventId: number) => {
-    if (confirm("¿Estás seguro de que quieres eliminar este evento compartido?")) {
-      deleteSharedEventMutation.mutate(sharedEventId);
-    }
+  const getCategoryColor = (categoryId: number | null) => {
+    if (!categoryId) return "#6B7280";
+    const category = categories.find((cat: EventCategory) => cat.id === categoryId);
+    return category?.color || "#6B7280";
   };
 
-  const handleEventClick = (event: any) => {
-    const sharedEvent = sharedEvents.find(se => se.originalEventId === event.resource.id);
-    if (sharedEvent) {
-      setSelectedEvent(sharedEvent);
-      setIsDialogOpen(true);
-    }
+  const getCategoryName = (categoryId: number | null) => {
+    if (!categoryId) return "Sin categoría";
+    const category = categories.find((cat: EventCategory) => cat.id === categoryId);
+    return category?.name || "Sin categoría";
   };
-
-  // Transform events for calendar
-  const calendarEvents = sharedEvents.map((sharedEvent) => ({
-    id: sharedEvent.originalEvent.id,
-    title: `${sharedEvent.originalEvent.title} (${sharedEvent.originalEvent.user.fullName})`,
-    start: new Date(`${sharedEvent.originalEvent.eventDate} ${sharedEvent.originalEvent.eventTime || "00:00"}`),
-    end: new Date(`${sharedEvent.originalEvent.eventDate} ${sharedEvent.originalEvent.eventTime || "23:59"}`),
-    resource: sharedEvent.originalEvent,
-  }));
 
   if (isLoading) {
     return (
@@ -201,293 +105,285 @@ export default function SharedCalendar() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">Calendario Compartido</h1>
-        <div className="text-sm text-muted-foreground">
-          Eventos compartidos por todos los usuarios
+        <div className="flex items-center space-x-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentDate(subMonths(currentDate, 1))}
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <h2 className="text-xl font-semibold">
+            {format(currentDate, "MMMM yyyy", { locale: es })}
+          </h2>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentDate(addMonths(currentDate, 1))}
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
         </div>
       </div>
 
+      {/* Event Categories Legend */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <CalendarIcon className="h-5 w-5" />
-            Vista de Calendario Compartido
+            <Tag className="h-5 w-5" />
+            Categorías de Eventos
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="h-[600px]">
-            <Calendar
-              localizer={localizer}
-              events={calendarEvents}
-              startAccessor="start"
-              endAccessor="end"
-              onSelectEvent={handleEventClick}
-              styleEvent={(event: any) => ({
-                style: {
-                  backgroundColor: categoryColors[event.resource.category as keyof typeof categoryColors],
-                  borderRadius: "4px",
-                  border: "none",
-                  color: "white",
-                },
-              })}
-              components={{
-                event: ({ event }: any) => (
-                  <div className="p-1 text-white text-xs">
-                    <div className="font-semibold">{event.title}</div>
-                    <div className="opacity-90">{categoryLabels[event.resource.category as keyof typeof categoryLabels]}</div>
-                  </div>
-                ),
-                toolbar: () => (
-                  <div className="flex justify-between items-center mb-4">
-                    <div className="flex gap-2">
-                      {Object.entries(categoryLabels).map(([value, label]) => (
-                        <Badge
-                          key={value}
-                          variant="secondary"
-                          className="flex items-center gap-1"
-                        >
-                          <div
-                            className="w-2 h-2 rounded-full"
-                            style={{ backgroundColor: categoryColors[value as keyof typeof categoryColors] }}
-                          />
-                          {label}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                ),
-              }}
-            />
+          <div className="flex flex-wrap gap-2">
+            {categories.map((category: EventCategory) => (
+              <Badge
+                key={category.id}
+                variant="secondary"
+                style={{ backgroundColor: category.color + "20", color: category.color }}
+              >
+                {category.name}
+              </Badge>
+            ))}
           </div>
         </CardContent>
       </Card>
 
+      {/* Calendar Grid */}
       <Card>
-        <CardHeader>
-          <CardTitle>Eventos Compartidos</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {sharedEvents.length === 0 ? (
-              <p className="text-muted-foreground text-center py-8">
-                No hay eventos compartidos
-              </p>
-            ) : (
-              sharedEvents.map((sharedEvent) => (
-                <div
-                  key={sharedEvent.id}
-                  className="border rounded-lg p-4 cursor-pointer hover:bg-muted/50 transition-colors"
-                  onClick={() => {
-                    setSelectedEvent(sharedEvent);
-                    setIsDialogOpen(true);
-                  }}
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <div
-                          className="w-3 h-3 rounded-full"
-                          style={{ backgroundColor: categoryColors[sharedEvent.originalEvent.category as keyof typeof categoryColors] }}
-                        />
-                        <h3 className="font-semibold">{sharedEvent.originalEvent.title}</h3>
-                        <Badge variant="outline">
-                          {categoryLabels[sharedEvent.originalEvent.category as keyof typeof categoryLabels]}
-                        </Badge>
-                      </div>
-                      
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground mb-2">
-                        <div className="flex items-center gap-1">
-                          <CalendarIcon className="h-4 w-4" />
-                          {format(new Date(sharedEvent.originalEvent.eventDate), "dd/MM/yyyy")}
-                        </div>
-                        {sharedEvent.originalEvent.eventTime && (
-                          <div className="flex items-center gap-1">
-                            <Clock className="h-4 w-4" />
-                            {sharedEvent.originalEvent.eventTime}
-                          </div>
-                        )}
-                      </div>
+        <CardContent className="p-0">
+          <div className="grid grid-cols-7 gap-0 border-t">
+            {["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"].map((day) => (
+              <div
+                key={day}
+                className="p-3 text-center font-semibold text-sm border-r border-b bg-muted/50"
+              >
+                {day}
+              </div>
+            ))}
+            {monthDays.map((day) => {
+              const dayEvents = eventsForDate(day);
+              const isCurrentMonth = isSameMonth(day, currentDate);
+              const isSelected = selectedDate && isSameDay(day, selectedDate);
 
-                      {sharedEvent.originalEvent.description && (
-                        <p className="text-sm text-muted-foreground mb-3">
-                          {sharedEvent.originalEvent.description}
-                        </p>
-                      )}
-
-                      <div className="flex items-center gap-4 text-sm">
-                        <div className="flex items-center gap-2">
-                          <Avatar className="h-6 w-6">
-                            <AvatarFallback className="text-xs">
-                              {sharedEvent.originalEvent.user.fullName.charAt(0)}
-                            </AvatarFallback>
-                          </Avatar>
-                          <span className="text-muted-foreground">
-                            Creado por {sharedEvent.originalEvent.user.fullName}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Avatar className="h-6 w-6">
-                            <AvatarFallback className="text-xs">
-                              {sharedEvent.sharedByUser.fullName.charAt(0)}
-                            </AvatarFallback>
-                          </Avatar>
-                          <span className="text-muted-foreground">
-                            Compartido por {sharedEvent.sharedByUser.fullName}
-                          </span>
-                        </div>
-                      </div>
-
-                      {sharedEvent.comments.length > 0 && (
-                        <div className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
-                          <MessageSquare className="h-4 w-4" />
-                          {sharedEvent.comments.length} comentario{sharedEvent.comments.length !== 1 ? "s" : ""}
-                        </div>
-                      )}
-                    </div>
-
-                    {user?.id === sharedEvent.sharedByUserId && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteSharedEvent(sharedEvent.id);
+              return (
+                <TooltipProvider key={day.toISOString()}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div
+                        className={`min-h-[100px] p-2 border-r border-b cursor-pointer transition-colors ${
+                          !isCurrentMonth ? "bg-muted/30 text-muted-foreground" : "hover:bg-muted/50"
+                        } ${isSelected ? "bg-primary/10 border-primary" : ""}`}
+                        onClick={() => {
+                          setSelectedDate(day);
+                          if (dayEvents.length > 0) {
+                            setSelectedEvent(dayEvents[0]);
+                            setShowEventDetails(true);
+                          }
                         }}
-                        disabled={deleteSharedEventMutation.isPending}
                       >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                        <div className="font-semibold text-sm mb-1">
+                          {format(day, "d")}
+                        </div>
+                        <div className="space-y-1">
+                          {dayEvents.slice(0, 3).map((event: SharedEventWithDetails) => (
+                            <div
+                              key={event.id}
+                              className="text-xs p-1 rounded truncate"
+                              style={{
+                                backgroundColor: getCategoryColor(event.categoryId) + "20",
+                                color: getCategoryColor(event.categoryId),
+                              }}
+                            >
+                              {event.time && (
+                                <span className="font-medium">
+                                  {format(new Date(`1970-01-01T${event.time}`), "HH:mm")} - 
+                                </span>
+                              )}
+                              {event.title}
+                            </div>
+                          ))}
+                          {dayEvents.length > 3 && (
+                            <div className="text-xs text-muted-foreground">
+                              +{dayEvents.length - 3} más
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </TooltipTrigger>
+                    {dayEvents.length > 0 && (
+                      <TooltipContent>
+                        <div className="space-y-2">
+                          <div className="font-semibold">
+                            {format(day, "d MMMM yyyy", { locale: es })}
+                          </div>
+                          {dayEvents.map((event: SharedEventWithDetails) => (
+                            <div key={event.id} className="space-y-1">
+                              <div className="flex items-center gap-2">
+                                <div
+                                  className="w-3 h-3 rounded-full"
+                                  style={{ backgroundColor: getCategoryColor(event.categoryId) }}
+                                />
+                                <span className="font-medium">{event.title}</span>
+                              </div>
+                              {event.time && (
+                                <div className="text-sm text-muted-foreground ml-5">
+                                  <Clock className="inline h-3 w-3 mr-1" />
+                                  {format(new Date(`1970-01-01T${event.time}`), "HH:mm")}
+                                </div>
+                              )}
+                              <div className="text-sm text-muted-foreground ml-5">
+                                Compartido por: {event.sharedByUser.fullName}
+                              </div>
+                              <div className="text-sm text-muted-foreground ml-5">
+                                {getCategoryName(event.categoryId)}
+                              </div>
+                              {event.description && (
+                                <div className="text-sm ml-5">{event.description}</div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </TooltipContent>
                     )}
-                  </div>
-                </div>
-              ))
-            )}
+                  </Tooltip>
+                </TooltipProvider>
+              );
+            })}
           </div>
         </CardContent>
       </Card>
 
       {/* Event Details Dialog */}
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+      <Dialog open={showEventDetails} onOpenChange={setShowEventDetails}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Detalles del Evento Compartido</DialogTitle>
           </DialogHeader>
           {selectedEvent && (
-            <div className="space-y-4">
-              <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <div
-                    className="w-3 h-3 rounded-full"
-                    style={{ backgroundColor: categoryColors[selectedEvent.originalEvent.category as keyof typeof categoryColors] }}
-                  />
-                  <h3 className="font-semibold text-lg">{selectedEvent.originalEvent.title}</h3>
-                  <Badge variant="outline">
-                    {categoryLabels[selectedEvent.originalEvent.category as keyof typeof categoryLabels]}
-                  </Badge>
-                </div>
-
-                <div className="flex items-center gap-4 text-sm text-muted-foreground mb-3">
-                  <div className="flex items-center gap-1">
-                    <CalendarIcon className="h-4 w-4" />
-                    {format(new Date(selectedEvent.originalEvent.eventDate), "dd/MM/yyyy")}
-                  </div>
-                  {selectedEvent.originalEvent.eventTime && (
-                    <div className="flex items-center gap-1">
-                      <Clock className="h-4 w-4" />
-                      {selectedEvent.originalEvent.eventTime}
-                    </div>
-                  )}
-                </div>
-
-                {selectedEvent.originalEvent.description && (
-                  <p className="text-sm mb-4">{selectedEvent.originalEvent.description}</p>
-                )}
-
-                <div className="flex items-center gap-4 text-sm text-muted-foreground border-t pt-3">
-                  <div className="flex items-center gap-2">
-                    <Avatar className="h-6 w-6">
-                      <AvatarFallback className="text-xs">
-                        {selectedEvent.originalEvent.user.fullName.charAt(0)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <span>
-                      Creado por <strong>{selectedEvent.originalEvent.user.fullName}</strong>
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Avatar className="h-6 w-6">
-                      <AvatarFallback className="text-xs">
-                        {selectedEvent.sharedByUser.fullName.charAt(0)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <span>
-                      Compartido por <strong>{selectedEvent.sharedByUser.fullName}</strong>
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="border-t pt-4">
-                <h4 className="font-semibold mb-3 flex items-center gap-2">
-                  <MessageSquare className="h-4 w-4" />
-                  Comentarios ({selectedEvent.comments.length})
-                </h4>
-                
-                <div className="space-y-3 mb-4 max-h-48 overflow-y-auto">
-                  {selectedEvent.comments.length === 0 ? (
-                    <p className="text-muted-foreground text-sm">No hay comentarios aún</p>
-                  ) : (
-                    selectedEvent.comments.map((comment) => (
-                      <div key={comment.id} className="flex items-start gap-3 p-2 bg-muted/30 rounded">
-                        <Avatar className="h-6 w-6">
-                          <AvatarFallback className="text-xs">
-                            {comment.user.fullName.charAt(0)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1">
-                          <div className="flex items-center justify-between">
-                            <span className="font-medium text-sm">{comment.user.fullName}</span>
-                            <span className="text-xs text-muted-foreground">
-                              {format(new Date(comment.createdAt), "dd/MM/yyyy HH:mm")}
-                            </span>
-                          </div>
-                          <p className="text-sm mt-1">{comment.comment}</p>
-                        </div>
-                        {user?.id === comment.user.id && (
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleDeleteComment(comment.id)}
-                            disabled={deleteCommentMutation.isPending}
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </Button>
-                        )}
-                      </div>
-                    ))
-                  )}
-                </div>
-
-                <form onSubmit={handleAddComment} className="flex gap-2">
-                  <Input
-                    placeholder="Añadir un comentario..."
-                    value={commentText}
-                    onChange={(e) => setCommentText(e.target.value)}
-                    className="flex-1"
-                  />
-                  <Button 
-                    type="submit" 
-                    disabled={!commentText.trim() || addCommentMutation.isPending}
-                  >
-                    Enviar
-                  </Button>
-                </form>
-              </div>
-            </div>
+            <SharedEventDetails
+              event={selectedEvent}
+              category={categories.find((cat: EventCategory) => cat.id === selectedEvent.categoryId)}
+              currentUser={user}
+              newComment={newComment}
+              onCommentChange={setNewComment}
+              onAddComment={handleAddComment}
+              onClose={() => setShowEventDetails(false)}
+            />
           )}
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+function SharedEventDetails({ 
+  event, 
+  category, 
+  currentUser, 
+  newComment, 
+  onCommentChange, 
+  onAddComment, 
+  onClose 
+}: {
+  event: SharedEventWithDetails;
+  category?: EventCategory;
+  currentUser: any;
+  newComment: string;
+  onCommentChange: (comment: string) => void;
+  onAddComment: () => void;
+  onClose: () => void;
+}) {
+  return (
+    <div className="space-y-4">
+      <div>
+        <h3 className="text-lg font-semibold">{event.title}</h3>
+        {category && (
+          <Badge
+            variant="secondary"
+            style={{ backgroundColor: category.color + "20", color: category.color }}
+            className="mt-2"
+          >
+            {category.name}
+          </Badge>
+        )}
+      </div>
+
+      <div className="space-y-2">
+        <div className="flex items-center gap-2 text-sm">
+          <Calendar className="h-4 w-4" />
+          {format(new Date(event.date), "d MMMM yyyy", { locale: es })}
+        </div>
+        {event.time && (
+          <div className="flex items-center gap-2 text-sm">
+            <Clock className="h-4 w-4" />
+            {format(new Date(`1970-01-01T${event.time}`), "HH:mm")}
+          </div>
+        )}
+        <div className="flex items-center gap-2 text-sm">
+          <User className="h-4 w-4" />
+          Compartido por: {event.sharedByUser.fullName}
+        </div>
+      </div>
+
+      {event.description && (
+        <div>
+          <h4 className="font-medium mb-1">Descripción</h4>
+          <p className="text-sm text-muted-foreground">{event.description}</p>
+        </div>
+      )}
+
+      <Separator />
+
+      {/* Comments Section */}
+      <div>
+        <h4 className="font-medium mb-3 flex items-center gap-2">
+          <MessageSquare className="h-4 w-4" />
+          Comentarios
+        </h4>
+        
+        {/* Add Comment */}
+        <div className="space-y-2 mb-4">
+          <Textarea
+            placeholder="Añade un comentario..."
+            value={newComment}
+            onChange={(e) => onCommentChange(e.target.value)}
+            rows={2}
+          />
+          <Button onClick={onAddComment} disabled={!newComment.trim()}>
+            Enviar Comentario
+          </Button>
+        </div>
+
+        {/* Comments List */}
+        <div className="space-y-3 max-h-60 overflow-y-auto">
+          {event.comments && event.comments.length > 0 ? (
+            event.comments.map((comment: any) => (
+              <div key={comment.id} className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="font-medium text-sm">{comment.user.fullName}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {format(new Date(comment.createdAt), "d MMM HH:mm", { locale: es })}
+                  </span>
+                </div>
+                <p className="text-sm text-muted-foreground bg-muted/30 p-2 rounded">
+                  {comment.comment}
+                </p>
+              </div>
+            ))
+          ) : (
+            <p className="text-sm text-muted-foreground">No hay comentarios aún.</p>
+          )}
+        </div>
+      </div>
+
+      <div className="flex justify-end">
+        <Button variant="outline" onClick={onClose}>
+          Cerrar
+        </Button>
+      </div>
     </div>
   );
 }

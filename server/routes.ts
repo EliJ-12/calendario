@@ -6,12 +6,12 @@ import { storage } from "./storage.js";
 import { setupAuth } from "./auth.js";
 import { api } from "../shared/routes.js";
 import { z } from "zod";
-import { insertUserSchema, insertCalendarEventSchema, insertSharedEventSchema, insertEventCommentSchema } from "../shared/schema.js";
+import { insertUserSchema, insertPersonalEventSchema, insertSharedEventSchema, insertSharedEventCommentSchema } from "../shared/schema.js";
 import { createClient } from '@supabase/supabase-js';
 
 import { db } from "./db.js";
-import { users, calendarEvents, sharedEvents, eventComments } from "../shared/schema.js";
-import { eq, and, gte, lte, desc } from "drizzle-orm";
+import { users, personalEvents, sharedEvents, sharedEventComments, eventCategories } from "../shared/schema.js";
+import { eq, and, gte, lte } from "drizzle-orm";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -156,229 +156,227 @@ export async function registerRoutes(
     }
   });
 
-  // === Calendar Events ===
-  app.get(api.calendarEvents.list.path, async (req, res) => {
+  // === Event Categories ===
+  app.get(api.eventCategories.list.path, async (req, res) => {
+    try {
+      const categories = await db.select().from(eventCategories);
+      res.json(categories);
+    } catch (error) {
+      console.error('Error fetching event categories:', error);
+      res.status(500).json({ message: "Failed to fetch event categories" });
+    }
+  });
+
+  // === Personal Events ===
+  app.get(api.personalEvents.list.path, async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
     
     const user = req.user as any;
-    const userId = user.role === 'admin' && req.query.userId ? 
-      Number(req.query.userId) : user.id;
-
-    const conditions = [];
-    if (userId !== undefined) conditions.push(eq(calendarEvents.userId, userId));
-    if (req.query.startDate) conditions.push(gte(calendarEvents.eventDate, req.query.startDate as string));
-    if (req.query.endDate) conditions.push(lte(calendarEvents.eventDate, req.query.endDate as string));
-    if (req.query.category) conditions.push(eq(calendarEvents.category, req.query.category as any));
-
-    let query = db.select().from(calendarEvents);
-    if (conditions.length > 0) {
-      query = query.where(and(...conditions));
-    }
+    let userId = user.id;
     
-    const events = await query.orderBy(desc(calendarEvents.eventDate));
-    res.json(events);
+    if (user.role === 'admin' && req.query.userId) {
+      userId = Number(req.query.userId);
+    }
+
+    try {
+      const baseQuery = db.select({
+        id: personalEvents.id,
+        userId: personalEvents.userId,
+        categoryId: personalEvents.categoryId,
+        title: personalEvents.title,
+        description: personalEvents.description,
+        date: personalEvents.date,
+        time: personalEvents.time,
+        isAllDay: personalEvents.isAllDay,
+        createdAt: personalEvents.createdAt,
+        updatedAt: personalEvents.updatedAt,
+        user: {
+          id: users.id,
+          username: users.username,
+          fullName: users.fullName,
+          role: users.role,
+          createdAt: users.createdAt
+        },
+        category: {
+          id: eventCategories.id,
+          name: eventCategories.name,
+          color: eventCategories.color,
+          createdAt: eventCategories.createdAt
+        }
+      })
+      .from(personalEvents)
+      .leftJoin(users, eq(personalEvents.userId, users.id))
+      .leftJoin(eventCategories, eq(personalEvents.categoryId, eventCategories.id));
+
+      let events;
+      if (req.query.startDate && req.query.endDate) {
+        events = await baseQuery.where(
+          and(
+            eq(personalEvents.userId, userId),
+            gte(personalEvents.date, req.query.startDate as string),
+            lte(personalEvents.date, req.query.endDate as string)
+          )
+        );
+      } else {
+        events = await baseQuery.where(eq(personalEvents.userId, userId));
+      }
+
+      res.json(events);
+    } catch (error) {
+      console.error('Error fetching personal events:', error);
+      res.status(500).json({ message: "Failed to fetch personal events" });
+    }
   });
 
-  app.post(api.calendarEvents.create.path, async (req, res) => {
+  app.post(api.personalEvents.create.path, async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
     
     try {
-      const input = insertCalendarEventSchema.parse(req.body);
-      
-      const event = await db.insert(calendarEvents).values({
+      const input = insertPersonalEventSchema.parse(req.body);
+      const event = await db.insert(personalEvents).values({
         ...input,
         userId: (req.user as any).id
       }).returning();
-      
       res.status(201).json(event[0]);
     } catch (err) {
       if (err instanceof z.ZodError) {
         return res.status(400).json({ message: err.errors[0].message });
       }
-      throw err;
+      console.error('Error creating personal event:', err);
+      res.status(500).json({ message: "Failed to create personal event" });
     }
   });
 
-  app.patch(api.calendarEvents.update.path, async (req, res) => {
+  app.patch(api.personalEvents.update.path, async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
     
     const id = Number(req.params.id);
-    const [existing] = await db.select().from(calendarEvents).where(eq(calendarEvents.id, id));
+    const existing = await db.select().from(personalEvents).where(eq(personalEvents.id, id)).limit(1);
     
-    if (!existing) return res.status(404).json({ message: "Not found" });
+    if (!existing.length) return res.status(404).json({ message: "Event not found" });
     
     const user = req.user as any;
-    if (user.role !== 'admin' && existing.userId !== user.id) {
+    if (user.role !== 'admin' && existing[0].userId !== user.id) {
       return res.status(403).json({ message: "Cannot edit this event" });
     }
 
-    const [updated] = await db.update(calendarEvents)
-      .set(req.body)
-      .where(eq(calendarEvents.id, id))
-      .returning();
-    
-    res.json(updated);
+    try {
+      const updated = await db.update(personalEvents)
+        .set({ ...req.body, updatedAt: new Date() })
+        .where(eq(personalEvents.id, id))
+        .returning();
+      res.json(updated[0]);
+    } catch (error) {
+      console.error('Error updating personal event:', error);
+      res.status(500).json({ message: "Failed to update personal event" });
+    }
   });
 
-  app.delete(api.calendarEvents.delete.path, async (req, res) => {
+  app.delete(api.personalEvents.delete.path, async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
     
     const id = Number(req.params.id);
-    const [existing] = await db.select().from(calendarEvents).where(eq(calendarEvents.id, id));
+    const existing = await db.select().from(personalEvents).where(eq(personalEvents.id, id)).limit(1);
     
-    if (!existing) return res.status(404).json({ message: "Not found" });
+    if (!existing.length) return res.status(404).json({ message: "Event not found" });
     
     const user = req.user as any;
-    if (user.role !== 'admin' && existing.userId !== user.id) {
+    if (user.role !== 'admin' && existing[0].userId !== user.id) {
       return res.status(403).json({ message: "Cannot delete this event" });
     }
 
-    await db.delete(calendarEvents).where(eq(calendarEvents.id, id));
-    res.sendStatus(204);
+    try {
+      await db.delete(personalEvents).where(eq(personalEvents.id, id));
+      res.sendStatus(204);
+    } catch (error) {
+      console.error('Error deleting personal event:', error);
+      res.status(500).json({ message: "Failed to delete personal event" });
+    }
   });
 
   // === Shared Events ===
   app.get(api.sharedEvents.list.path, async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
 
-    // Get basic shared events with original event info
-    const sharedEventsList = await db
-      .select({
+    try {
+      const events = await db.select({
         id: sharedEvents.id,
         originalEventId: sharedEvents.originalEventId,
         sharedByUserId: sharedEvents.sharedByUserId,
-        sharedAt: sharedEvents.sharedAt,
-        isActive: sharedEvents.isActive,
+        title: sharedEvents.title,
+        description: sharedEvents.description,
+        date: sharedEvents.date,
+        time: sharedEvents.time,
+        isAllDay: sharedEvents.isAllDay,
+        categoryId: sharedEvents.categoryId,
+        createdAt: sharedEvents.createdAt,
+        updatedAt: sharedEvents.updatedAt,
+        sharedByUser: {
+          id: users.id,
+          username: users.username,
+          fullName: users.fullName,
+          role: users.role,
+          createdAt: users.createdAt
+        },
+        category: {
+          id: eventCategories.id,
+          name: eventCategories.name,
+          color: eventCategories.color,
+          createdAt: eventCategories.createdAt
+        }
       })
       .from(sharedEvents)
-      .where(eq(sharedEvents.isActive, true))
-      .orderBy(desc(sharedEvents.sharedAt));
+      .leftJoin(users, eq(sharedEvents.sharedByUserId, users.id))
+      .leftJoin(eventCategories, eq(sharedEvents.categoryId, eventCategories.id));
 
-    // Get detailed info for each shared event
-    const eventsWithDetails = await Promise.all(
-      sharedEventsList.map(async (sharedEvent) => {
-        // Get original event with user info
-        const [originalEvent] = await db
-          .select({
-            id: calendarEvents.id,
-            title: calendarEvents.title,
-            description: calendarEvents.description,
-            category: calendarEvents.category,
-            eventDate: calendarEvents.eventDate,
-            eventTime: calendarEvents.eventTime,
-            userId: calendarEvents.userId,
-            isShared: calendarEvents.isShared,
-            createdAt: calendarEvents.createdAt,
-            updatedAt: calendarEvents.updatedAt,
-            user: {
-              id: users.id,
-              username: users.username,
-              fullName: users.fullName,
-              role: users.role,
-              createdAt: users.createdAt,
-              updatedAt: users.updatedAt,
-            }
-          })
-          .from(calendarEvents)
-          .innerJoin(users, eq(calendarEvents.userId, users.id))
-          .where(eq(calendarEvents.id, sharedEvent.originalEventId));
-
-        // Get shared by user info
-        const [sharedByUser] = await db
-          .select({
-            id: users.id,
-            username: users.username,
-            fullName: users.fullName,
-            role: users.role,
-            createdAt: users.createdAt,
-            updatedAt: users.updatedAt,
-          })
-          .from(users)
-          .where(eq(users.id, sharedEvent.sharedByUserId));
-
-        // Get comments
-        const comments = await db
-          .select({
-            id: eventComments.id,
-            comment: eventComments.comment,
-            createdAt: eventComments.createdAt,
-            user: {
-              id: users.id,
-              username: users.username,
-              fullName: users.fullName,
-              role: users.role,
-            }
-          })
-          .from(eventComments)
-          .innerJoin(users, eq(eventComments.userId, users.id))
-          .where(eq(eventComments.sharedEventId, sharedEvent.id))
-          .orderBy(eventComments.createdAt);
-
-        return {
-          ...sharedEvent,
-          originalEvent: originalEvent,
-          sharedByUser: sharedByUser,
-          comments
-        };
-      })
-    );
-
-    res.json(eventsWithDetails);
+      res.json(events);
+    } catch (error) {
+      console.error('Error fetching shared events:', error);
+      res.status(500).json({ message: "Failed to fetch shared events" });
+    }
   });
 
   app.post(api.sharedEvents.create.path, async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
     
     try {
-      const { originalEventId } = req.body;
-      const userId = (req.user as any).id;
-      
-      // Check if the original event exists and belongs to the user
-      const [originalEvent] = await db
-        .select()
-        .from(calendarEvents)
-        .where(eq(calendarEvents.id, originalEventId));
-      
-      if (!originalEvent) {
-        return res.status(404).json({ message: "Original event not found" });
-      }
-      
-      if (originalEvent.userId !== userId) {
-        return res.status(403).json({ message: "Cannot share events that don't belong to you" });
-      }
-      
-      // Check if already shared
-      const [existingShared] = await db
-        .select()
-        .from(sharedEvents)
-        .where(and(
-          eq(sharedEvents.originalEventId, originalEventId),
-          eq(sharedEvents.sharedByUserId, userId),
-          eq(sharedEvents.isActive, true)
-        ));
-      
-      if (existingShared) {
-        return res.status(409).json({ message: "Event already shared" });
-      }
-      
-      const [sharedEvent] = await db.insert(sharedEvents)
-        .values({
-          originalEventId,
-          sharedByUserId: userId
-        })
-        .returning();
-      
-      // Mark the original event as shared
-      await db.update(calendarEvents)
-        .set({ isShared: true })
-        .where(eq(calendarEvents.id, originalEventId));
-      
-      res.status(201).json(sharedEvent);
+      const input = insertSharedEventSchema.parse(req.body);
+      const event = await db.insert(sharedEvents).values({
+        ...input,
+        sharedByUserId: (req.user as any).id
+      }).returning();
+      res.status(201).json(event[0]);
     } catch (err) {
       if (err instanceof z.ZodError) {
         return res.status(400).json({ message: err.errors[0].message });
       }
-      throw err;
+      console.error('Error creating shared event:', err);
+      res.status(500).json({ message: "Failed to create shared event" });
+    }
+  });
+
+  app.patch(api.sharedEvents.update.path, async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
+    
+    const id = Number(req.params.id);
+    const existing = await db.select().from(sharedEvents).where(eq(sharedEvents.id, id)).limit(1);
+    
+    if (!existing.length) return res.status(404).json({ message: "Event not found" });
+    
+    const user = req.user as any;
+    if (existing[0].sharedByUserId !== user.id) {
+      return res.status(403).json({ message: "Cannot edit this event" });
+    }
+
+    try {
+      const updated = await db.update(sharedEvents)
+        .set({ ...req.body, updatedAt: new Date() })
+        .where(eq(sharedEvents.id, id))
+        .returning();
+      res.json(updated[0]);
+    } catch (error) {
+      console.error('Error updating shared event:', error);
+      res.status(500).json({ message: "Failed to update shared event" });
     }
   });
 
@@ -386,89 +384,44 @@ export async function registerRoutes(
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
     
     const id = Number(req.params.id);
-    const [existing] = await db.select().from(sharedEvents).where(eq(sharedEvents.id, id));
+    const existing = await db.select().from(sharedEvents).where(eq(sharedEvents.id, id)).limit(1);
     
-    if (!existing) return res.status(404).json({ message: "Not found" });
+    if (!existing.length) return res.status(404).json({ message: "Event not found" });
     
     const user = req.user as any;
-    if (user.role !== 'admin' && existing.sharedByUserId !== user.id) {
-      return res.status(403).json({ message: "Cannot delete this shared event" });
+    if (existing[0].sharedByUserId !== user.id) {
+      return res.status(403).json({ message: "Cannot delete this event" });
     }
 
-    await db.update(sharedEvents)
-      .set({ isActive: false })
-      .where(eq(sharedEvents.id, id));
-    
-    // Check if there are any other active shares for this event
-    const [otherShares] = await db
-      .select()
-      .from(sharedEvents)
-      .where(and(
-        eq(sharedEvents.originalEventId, existing.originalEventId),
-        eq(sharedEvents.isActive, true)
-      ));
-    
-    if (!otherShares) {
-      // Mark the original event as not shared
-      await db.update(calendarEvents)
-        .set({ isShared: false })
-        .where(eq(calendarEvents.id, existing.originalEventId));
+    try {
+      await db.delete(sharedEvents).where(eq(sharedEvents.id, id));
+      res.sendStatus(204);
+    } catch (error) {
+      console.error('Error deleting shared event:', error);
+      res.status(500).json({ message: "Failed to delete shared event" });
     }
-    
-    res.sendStatus(204);
   });
 
-  // === Event Comments ===
-  app.post(api.eventComments.create.path, async (req, res) => {
+  // === Shared Event Comments ===
+  app.post(api.sharedEventComments.create.path, async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
     
     try {
-      const input = insertEventCommentSchema.parse(req.body);
-      
-      // Verify the shared event exists and is active
-      const [sharedEvent] = await db
-        .select()
-        .from(sharedEvents)
-        .where(and(
-          eq(sharedEvents.id, input.sharedEventId),
-          eq(sharedEvents.isActive, true)
-        ));
-      
-      if (!sharedEvent) {
-        return res.status(404).json({ message: "Shared event not found" });
-      }
-      
-      const [comment] = await db.insert(eventComments)
-        .values({
-          ...input,
-          userId: (req.user as any).id
-        })
-        .returning();
-      
-      res.status(201).json(comment);
+      const eventId = Number(req.params.eventId);
+      const input = insertSharedEventCommentSchema.parse(req.body);
+      const comment = await db.insert(sharedEventComments).values({
+        ...input,
+        sharedEventId: eventId,
+        userId: (req.user as any).id
+      }).returning();
+      res.status(201).json(comment[0]);
     } catch (err) {
       if (err instanceof z.ZodError) {
         return res.status(400).json({ message: err.errors[0].message });
       }
-      throw err;
+      console.error('Error creating comment:', err);
+      res.status(500).json({ message: "Failed to create comment" });
     }
-  });
-
-  app.delete(api.eventComments.delete.path, async (req, res) => {
-    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
-    
-    const id = Number(req.params.id);
-    const [existing] = await db.select().from(eventComments).where(eq(eventComments.id, id));
-    
-    if (!existing) return res.status(404).json({ message: "Not found" });
-    
-    const user = req.user as any;
-    if (user.role !== 'admin' && existing.userId !== user.id) {
-      return res.status(403).json({ message: "Cannot delete this comment" });
-    }
-
-    await db.delete(eventComments).where(eq(eventComments.id, id));
-    res.sendStatus(204);
   });
 
   app.delete("/api/users/:id", async (req, res) => {
