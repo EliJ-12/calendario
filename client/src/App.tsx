@@ -10,8 +10,6 @@ import { Loader2 } from "lucide-react";
 import AuthPage from "@/pages/auth-page";
 import PersonalCalendar from "@/pages/calendar/personal";
 import SharedCalendar from "@/pages/calendar/shared";
-import AdminDashboard from "@/pages/admin/dashboard";
-import AdminEmployees from "@/pages/admin/employees";
 
 // Protected Route Component
 function ProtectedRoute({ 
@@ -58,12 +56,9 @@ function Router() {
         <ProtectedRoute component={SharedCalendar} allowedRoles={['employee', 'admin']} />
       </Route>
 
-      {/* Admin Routes */}
+      {/* Admin Routes - Admins use the same calendar pages */}
       <Route path="/admin">
-        <ProtectedRoute component={AdminDashboard} allowedRoles={['admin']} />
-      </Route>
-      <Route path="/admin/employees">
-        <ProtectedRoute component={AdminEmployees} allowedRoles={['admin']} />
+        <ProtectedRoute component={PersonalCalendar} allowedRoles={['admin']} />
       </Route>
       <Route path="/admin/calendar/personal">
         <ProtectedRoute component={PersonalCalendar} allowedRoles={['admin']} />
