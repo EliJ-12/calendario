@@ -2,15 +2,16 @@
   "version": 2,
   "builds": [
     {
-      "src": "server/index.ts",
+      "src": "server/vercel.js",
       "use": "@vercel/node",
       "config": {
+        "includeFiles": ["server/**/*.ts", "shared/**/*.ts", ".env*"],
         "maxDuration": 30,
         "runtime": "nodejs18.x"
       }
     },
     {
-      "src": "package.json", 
+      "src": "package.json",
       "use": "@vercel/static-build",
       "config": {
         "distDir": "dist/public"
@@ -20,17 +21,15 @@
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "/server/index.ts"
+      "dest": "/server/vercel.js"
     },
     {
       "handle": "filesystem"
     },
     {
       "src": "/(.*)",
-      "dest": "/index.html"
+      "dest": "/index.html",
+      "status": 200
     }
-  ],
-  "env": {
-    "NODE_ENV": "production"
-  }
+  ]
 }
