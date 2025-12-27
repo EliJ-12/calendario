@@ -9,7 +9,7 @@ import { Loader2 } from "lucide-react";
 // Pages
 import AuthPage from "@/pages/auth-page";
 import EmployeeCalendar from "@/pages/employee/calendar";
-import AdminDashboard from "@/pages/admin/dashboard";
+import AdminCalendar from "@/pages/admin/calendar";
 import AdminEmployees from "@/pages/admin/employees";
 
 // Protected Route Component
@@ -53,7 +53,7 @@ function Router() {
 
       {/* Admin Routes */}
       <Route path="/admin">
-        <ProtectedRoute component={AdminDashboard} allowedRoles={['admin']} />
+        <ProtectedRoute component={AdminCalendar} allowedRoles={['admin']} />
       </Route>
       <Route path="/admin/employees">
         <ProtectedRoute component={AdminEmployees} allowedRoles={['admin']} />
