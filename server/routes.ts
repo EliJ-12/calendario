@@ -370,5 +370,294 @@ export async function registerRoutes(
     res.json(updated);
   });
 
+  // === Calendar Events ===
+  app.get("/api/calendar/events", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
+
+    const user = req.user as any;
+    const { data, error } = await supabase
+      .from('calendar_events')
+      .select(`
+        *,
+        user:users(id, username, full_name)
+      `)
+      .or(`user_id.eq.${user.id},is_shared.eq.true`);
+
+    if (error) {
+      console.error('Error fetching calendar events:', error);
+      return res.status(500).json({ message: "Failed to fetch events" });
+    }
+
+    res.json(data || []);
+  });
+
+  app.post("/api/calendar/events", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
+
+    try {
+      const eventData = {
+        ...req.body,
+        user_id: (req.user as any).id
+      };
+
+      const { data, error } = await supabase
+        .from('calendar_events')
+        .insert(eventData)
+        .select(`
+          *,
+          user:users(id, username, full_name)
+        `)
+        .single();
+
+      if (error) {
+        console.error('Error creating calendar event:', error);
+        return res.status(500).json({ message: "Failed to create event" });
+      }
+
+      res.status(201).json(data);
+    } catch (err) {
+      console.error('Error creating calendar event:', err);
+      res.status(500).json({ message: "Failed to create event" });
+    }
+  });
+
+  app.put("/api/calendar/events/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
+
+    const id = Number(req.params.id);
+    const user = req.user as any;
+
+    // First check if user owns the event
+    const { data: existingEvent, error: fetchError } = await supabase
+      .from('calendar_events')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (fetchError || !existingEvent) {
+      return res.status(404).json({ message: "Event not found" });
+    }
+
+    if (existingEvent.user_id !== user.id) {
+      return res.status(403).json({ message: "Cannot edit this event" });
+    }
+
+    const { data, error } = await supabase
+      .from('calendar_events')
+      .update(req.body)
+      .eq('id', id)
+      .select(`
+        *,
+        user:users(id, username, full_name)
+      `)
+      .single();
+
+    if (error) {
+      console.error('Error updating calendar event:', error);
+      return res.status(500).json({ message: "Failed to update event" });
+    }
+
+    res.json(data);
+  });
+
+  app.delete("/api/calendar/events/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
+
+    const id = Number(req.params.id);
+    const user = req.user as any;
+
+    // First check if user owns the event
+    const { data: existingEvent, error: fetchError } = await supabase
+      .from('calendar_events')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (fetchError || !existingEvent) {
+      return res.status(404).json({ message: "Event not found" });
+    }
+
+    if (existingEvent.user_id !== user.id) {
+      return res.status(403).json({ message: "Cannot delete this event" });
+    }
+
+    const { error } = await supabase
+      .from('calendar_events')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error deleting calendar event:', error);
+      return res.status(500).json({ message: "Failed to delete event" });
+    }
+
+    res.sendStatus(204);
+  });
+
+  app.post("/api/calendar/events/:id/share", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
+
+    const id = Number(req.params.id);
+    const user = req.user as any;
+
+    // First check if user owns the event
+    const { data: existingEvent, error: fetchError } = await supabase
+      .from('calendar_events')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (fetchError || !existingEvent) {
+      return res.status(404).json({ message: "Event not found" });
+    }
+
+    if (existingEvent.user_id !== user.id) {
+      return res.status(403).json({ message: "Cannot share this event" });
+    }
+
+    const { data, error } = await supabase
+      .from('calendar_events')
+      .update({ is_shared: true })
+      .eq('id', id)
+      .select(`
+        *,
+        user:users(id, username, full_name)
+      `)
+      .single();
+
+    if (error) {
+      console.error('Error sharing calendar event:', error);
+      return res.status(500).json({ message: "Failed to share event" });
+    }
+
+    res.json(data);
+  });
+
+  app.get("/api/calendar/shared-events", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
+
+    const { data, error } = await supabase
+      .from('calendar_events')
+      .select(`
+        *,
+        user:users(id, username, full_name)
+      `)
+      .eq('is_shared', true)
+      .order('event_date', { ascending: true });
+
+    if (error) {
+      console.error('Error fetching shared events:', error);
+      return res.status(500).json({ message: "Failed to fetch shared events" });
+    }
+
+    res.json(data || []);
+  });
+
+  // === Event Comments ===
+  app.get("/api/calendar/events/:id/comments", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
+
+    const eventId = Number(req.params.id);
+
+    const { data, error } = await supabase
+      .from('shared_event_comments')
+      .select(`
+        *,
+        user:users(id, username, full_name)
+      `)
+      .eq('event_id', eventId)
+      .order('created_at', { ascending: true });
+
+    if (error) {
+      console.error('Error fetching comments:', error);
+      return res.status(500).json({ message: "Failed to fetch comments" });
+    }
+
+    res.json(data || []);
+  });
+
+  app.post("/api/calendar/events/:id/comments", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
+
+    const eventId = Number(req.params.id);
+    const { comment } = req.body;
+    const user = req.user as any;
+
+    if (!comment || comment.trim() === '') {
+      return res.status(400).json({ message: "Comment cannot be empty" });
+    }
+
+    // Check if event is shared
+    const { data: event, error: eventError } = await supabase
+      .from('calendar_events')
+      .select('*')
+      .eq('id', eventId)
+      .single();
+
+    if (eventError || !event) {
+      return res.status(404).json({ message: "Event not found" });
+    }
+
+    if (!event.is_shared) {
+      return res.status(403).json({ message: "Cannot comment on non-shared events" });
+    }
+
+    const commentData = {
+      event_id: eventId,
+      user_id: user.id,
+      comment: comment.trim()
+    };
+
+    const { data, error } = await supabase
+      .from('shared_event_comments')
+      .insert(commentData)
+      .select(`
+        *,
+        user:users(id, username, full_name)
+      `)
+      .single();
+
+    if (error) {
+      console.error('Error creating comment:', error);
+      return res.status(500).json({ message: "Failed to create comment" });
+    }
+
+    res.status(201).json(data);
+  });
+
+  app.delete("/api/calendar/comments/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
+
+    const commentId = Number(req.params.id);
+    const user = req.user as any;
+
+    // First check if user owns the comment
+    const { data: existingComment, error: fetchError } = await supabase
+      .from('shared_event_comments')
+      .select('*')
+      .eq('id', commentId)
+      .single();
+
+    if (fetchError || !existingComment) {
+      return res.status(404).json({ message: "Comment not found" });
+    }
+
+    if (existingComment.user_id !== user.id) {
+      return res.status(403).json({ message: "Cannot delete this comment" });
+    }
+
+    const { error } = await supabase
+      .from('shared_event_comments')
+      .delete()
+      .eq('id', commentId);
+
+    if (error) {
+      console.error('Error deleting comment:', error);
+      return res.status(500).json({ message: "Failed to delete comment" });
+    }
+
+    res.sendStatus(204);
+  });
+
   return httpServer;
 }
