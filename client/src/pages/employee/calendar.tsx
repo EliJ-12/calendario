@@ -31,6 +31,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CalendarEvent } from "../../../../shared/schema";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import CalendarLegend from "@/components/calendar-legend";
+import EventTooltip from "@/components/event-tooltip";
 
 export default function EmployeeCalendar() {
   const { user } = useAuth();
@@ -172,18 +174,26 @@ export default function EmployeeCalendar() {
                       <div
                         key={event.id}
                         className="text-xs p-1 rounded truncate cursor-pointer hover:opacity-80"
-                        style={{ backgroundColor: event.color + '20', color: event.color }}
+                        style={{ backgroundColor: CATEGORY_COLORS[event.category as keyof typeof CATEGORY_COLORS] + '20', color: CATEGORY_COLORS[event.category as keyof typeof CATEGORY_COLORS] }}
                         onClick={(e) => handleEventClick(event, e)}
                       >
-                        {event.time && `${event.time} `}{event.title}
+                        {event.time && <span className="font-medium">{event.time} </span>}
+                        {event.title}
                       </div>
                     ))}
                     {dayEvents.length > 3 && (
-                      <div className="text-xs text-muted-foreground">
+                      <div className="text-xs text-muted-foreground pl-1">
                         +{dayEvents.length - 3} más
                       </div>
                     )}
                   </div>
+                  
+                  {/* Tooltip personalizado al pasar el cursor */}
+                  {hoveredDate === date && dayEvents.length > 0 && (
+                    <div className="absolute z-50 left-0 top-full mt-1">
+                      <EventTooltip events={dayEvents} date={date} />
+                    </div>
+                  )}
                 </div>
               </TooltipTrigger>
               {dayEvents.length > 0 && (
@@ -402,24 +412,7 @@ export default function EmployeeCalendar() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Leyenda</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-wrap gap-4">
-              {Object.entries(CATEGORY_LABELS).map(([key, label]) => (
-                <div key={key} className="flex items-center gap-2">
-                  <div 
-                    className="w-4 h-4 rounded-full" 
-                    style={{ backgroundColor: CATEGORY_COLORS[key as keyof typeof CATEGORY_COLORS] }}
-                  />
-                  <span className="text-sm">{label}</span>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+        <CalendarLegend />
 
         {/* Edit Event Dialog */}
         <Dialog open={editOpen} onOpenChange={setEditOpen}>

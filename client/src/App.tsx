@@ -11,6 +11,7 @@ import AuthPage from "@/pages/auth-page";
 import EmployeeCalendar from "@/pages/employee/calendar";
 import AdminCalendar from "@/pages/admin/calendar";
 import AdminEmployees from "@/pages/admin/employees";
+import SharedCalendar from "@/pages/shared-calendar";
 
 // Protected Route Component
 function ProtectedRoute({ 
@@ -49,6 +50,9 @@ function Router() {
       {/* Employee Routes */}
       <Route path="/dashboard">
         <ProtectedRoute component={EmployeeCalendar} allowedRoles={['employee']} />
+      </Route>
+      <Route path="/shared">
+        <ProtectedRoute component={SharedCalendar} allowedRoles={['employee', 'admin']} />
       </Route>
 
       {/* Admin Routes */}

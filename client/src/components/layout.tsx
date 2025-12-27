@@ -5,6 +5,7 @@ import {
   LayoutDashboard, 
   Calendar, 
   Users, 
+  Share2,
   Menu,
   X
 } from "lucide-react";
@@ -23,9 +24,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     ? [
         { href: "/admin", label: "Panel", icon: LayoutDashboard },
         { href: "/admin/employees", label: "Empleados", icon: Users },
+        { href: "/shared", label: "Compartido", icon: Share2 },
       ]
     : [
-        { href: "/dashboard", label: "Calendario", icon: Calendar },
+        { href: "/dashboard", label: "Mi Calendario", icon: Calendar },
+        { href: "/shared", label: "Compartido", icon: Share2 },
       ];
 
   const NavContent = () => (

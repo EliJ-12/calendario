@@ -160,27 +160,39 @@ export async function registerRoutes(
 
   // Get all events for a user (with optional date filtering)
   app.get("/api/calendar/events", async (req, res) => {
+    console.log('GET /api/calendar/events - Auth check:', req.isAuthenticated());
+    console.log('GET /api/calendar/events - User:', req.user);
+    console.log('GET /api/calendar/events - Query:', req.query);
+    
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
     
     const user = req.user as any;
     const { startDate, endDate } = req.query;
     
-    let events;
-    if (startDate && endDate) {
-      events = await db.select().from(calendarEvents)
-        .where(and(
-          eq(calendarEvents.userId, user.id),
-          gte(calendarEvents.date, startDate as string),
-          lte(calendarEvents.date, endDate as string)
-        ))
-        .orderBy(calendarEvents.date);
-    } else {
-      events = await db.select().from(calendarEvents)
-        .where(eq(calendarEvents.userId, user.id))
-        .orderBy(calendarEvents.date);
-    }
+    console.log('Getting events for user:', user.id, 'between', startDate, 'and', endDate);
     
-    res.json(events);
+    let events;
+    try {
+      if (startDate && endDate) {
+        events = await db.select().from(calendarEvents)
+          .where(and(
+            eq(calendarEvents.userId, user.id),
+            gte(calendarEvents.date, startDate as string),
+            lte(calendarEvents.date, endDate as string)
+          ))
+          .orderBy(calendarEvents.date);
+      } else {
+        events = await db.select().from(calendarEvents)
+          .where(eq(calendarEvents.userId, user.id))
+          .orderBy(calendarEvents.date);
+      }
+      
+      console.log('Found events:', events.length);
+      res.json(events);
+    } catch (error) {
+      console.error('Error fetching events:', error);
+      res.status(500).json({ message: "Failed to fetch events" });
+    }
   });
 
   // Get a single event
@@ -266,6 +278,67 @@ export async function registerRoutes(
     
     await db.delete(calendarEvents).where(eq(calendarEvents.id, id));
     res.sendStatus(204);
+  });
+
+  // === SHARED EVENTS ROUTES ===
+
+  // Get all shared events
+  app.get("/api/calendar/events/shared", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
+    
+    const user = req.user as any;
+    const { startDate, endDate } = req.query;
+    
+    console.log('Getting shared events for user:', user.id, 'between', startDate, 'and', endDate);
+    
+    let events;
+    try {
+      if (startDate && endDate) {
+        events = await db.select().from(calendarEvents)
+          .where(and(
+            eq(calendarEvents.isShared, true),
+            gte(calendarEvents.date, startDate as string),
+            lte(calendarEvents.date, endDate as string)
+          ))
+          .orderBy(calendarEvents.date);
+      } else {
+        events = await db.select().from(calendarEvents)
+          .where(eq(calendarEvents.isShared, true))
+          .orderBy(calendarEvents.date);
+      }
+      
+      console.log('Found shared events:', events.length);
+      res.json(events);
+    } catch (error) {
+      console.error('Error fetching shared events:', error);
+      res.status(500).json({ message: "Failed to fetch shared events" });
+    }
+  });
+
+  // Share an event
+  app.post("/api/calendar/events/:id/share", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
+    
+    const eventId = Number(req.params.id);
+    const user = req.user as any;
+    
+    const event = await db.select().from(calendarEvents).where(eq(calendarEvents.id, eventId)).limit(1);
+    
+    if (!event.length) return res.status(404).json({ message: "Event not found" });
+    
+    // Check if user can share this event
+    if (event[0].userId !== user.id && event[0].sharedBy !== user.id) {
+      return res.status(403).json({ message: "Access denied" });
+    }
+    
+    await db.update(calendarEvents)
+      .set({ 
+        isShared: true, 
+        sharedBy: user.id
+      })
+      .where(eq(calendarEvents.id, eventId));
+    
+    res.json({ message: "Event shared successfully" });
   });
 
   // === EVENT COMMENTS ROUTES ===
