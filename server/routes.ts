@@ -132,6 +132,10 @@ export async function registerRoutes(
   });
 
   app.post(api.users.create.path, async (req, res) => {
+    console.log('User creation attempt');
+    console.log('Is authenticated:', req.isAuthenticated());
+    console.log('User from request:', req.user);
+    
     // Only admins can create users, or if no users exist (initial setup)
     const { data: allUsers, error: fetchError } = await supabase
       .from('users')
@@ -143,8 +147,11 @@ export async function registerRoutes(
     }
     
     const isAdmin = req.isAuthenticated() && (req.user as any).role === 'admin';
+    console.log('Is admin:', isAdmin);
+    console.log('All users count:', allUsers?.length);
     
     if (allUsers && allUsers.length > 0 && !isAdmin) {
+       console.log('Unauthorized: users exist and user is not admin');
        return res.status(401).json({ message: "Unauthorized. Only admins can create users." });
     }
 
@@ -168,8 +175,10 @@ export async function registerRoutes(
         return res.status(500).json({ message: createError.message });
       }
       
+      console.log('User created successfully:', user);
       res.status(201).json(user);
     } catch (err) {
+      console.log('User creation error:', err);
       if (err instanceof z.ZodError) {
         return res.status(400).json({ message: err.errors[0].message });
       }

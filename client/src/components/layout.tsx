@@ -27,12 +27,10 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     ? [
         { href: "/admin", label: "Panel Admin", icon: LayoutDashboard },
         { href: "/admin/users", label: "Gestión Usuarios", icon: Users },
-        { href: "/calendar/personal", label: "Mi Calendario", icon: Calendar },
         { href: "/calendar/shared", label: "Calendario Compartido", icon: Share2 },
       ]
     : [
         { href: "/dashboard", label: "Mi Panel", icon: LayoutDashboard },
-        { href: "/calendar/personal", label: "Mi Calendario", icon: Calendar },
         { href: "/calendar/shared", label: "Calendario Compartido", icon: Share2 },
       ];
 
