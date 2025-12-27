@@ -1,387 +1,298 @@
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths } from "date-fns";
-import { es } from "date-fns/locale";
-import { Calendar, ChevronLeft, ChevronRight, MessageSquare, User, Clock, Tag } from "lucide-react";
+import { useState, useet } from "react";
+import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Badge } from "@/components/ui/badge";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
-import { api } from "@/shared/routes";
-import { SharedEventWithDetails, EventCategory, InsertSharedEventComment } from "@/shared/schema";
+import { Car, Crontent, aeaer, Cl } from "cet";
+mor { DiogDiaognt DiaogHadrDiaogTile, Dialog}from "@/mpnens/u/diaog";
+mr { Ipu} frm "@/cmponens/u/inut";
+mport { Labl } fm "@/cmponens/u/label";
+imort { extaa } fom"@/cmpnens/u/textarea";
+imort { earPlusEdTrsh2, Ey Shr2 } fom"uierat";
+import { Qery, useMuatin, ueQueryClient } from "@tanstackrct-qery";
+impor { toast } from "sonner";
+itSharedEvent ieoriginal_even_id: numbr;
+  shared_by_user_idnumber;
+  itle: st entevent_ategeven_tory_colorstingcategory_seated_atupdated_at: stringe_b_user?r_nt?SharedEventComment}from shared_ev_idumbere_dcomntscea_a;  use?:  d  full_ar}export default funtio Sharedledar(){cos { user } = usuth(); constqueyClint = ueQueryCli();
+const[currMnth,seCurMnth] =seState(w Dte()); [isViewDialogOpen,setIsViewDialogOpen]sStaefalse)
+  cost [electedDayets, etelecteDayns = useStt<Shd);
+  const [eectedEvt, etSeectedEvt] = useState<ShredEvent | null>(nul);
+  cont eCent seeCente("");
 
-interface SharedCalendarProps {
-  user: any;
-}
-
-export default function SharedCalendar({ user }: SharedCalendarProps) {
-  const [currentDate, setCurrentDate] = useState(new Date());
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const [showEventDetails, setShowEventDetails] = useState(false);
-  const [selectedEvent, setSelectedEvent] = useState<SharedEventWithDetails | null>(null);
-  const [newComment, setNewComment] = useState("");
-  const queryClient = useQueryClient();
-
-  // Fetch shared events
-  const { data: events = [], isLoading } = useQuery({
-    queryKey: ["shared-events"],
-    queryFn: async () => {
-      const response = await fetch(api.sharedEvents.list.path);
-      if (!response.ok) throw new Error("Failed to fetch shared events");
-      return response.json() as Promise<SharedEventWithDetails[]>;
-    },
+  // Fth shared events fr curre onth
+  cst { da: evens = [] } useQuery<SharedEven[]>({
+    queryKey: ["/api/shred-events", curentMonth.geh), rentMonth.geFullYer()],
+    quryFn: async ( => {
+      const response = awaifetch(`/api/shared-events?t${currt.getMonth) + 1}&year=${Monh.gtFullYear(}`)    if (!response.ok) throw new Error("Failed to feth shared events");
+      return respe.jsn();
+    }
   });
 
-  // Fetch event categories
-  const { data: categories = [] } = useQuery({
-    queryKey: ["event-categories"],
-    queryFn: async () => {
-      const response = await fetch(api.eventCategories.list.path);
-      if (!response.ok) throw new Error("Failed to fetch categories");
-      return response.json() as Promise<EventCategory[]>;
-    },
-  });
-
-  // Add comment mutation
-  const addCommentMutation = useMutation({
-    mutationFn: async ({ eventId, comment }: { eventId: number; comment: string }) => {
-      const response = await fetch(api.sharedEventComments.create.path.replace(":eventId", eventId.toString()), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ comment }),
+  // Sr event muttion
+  onst sreEventMutation = useMutation({
+    mutationFn: asc (evenId: numb) => {
+      const response = wait fetch"/api/shared-events", 
+        mehod: "POST",
+        hedes: { "Conent-Type""applicatio/json" },
+        body: JON.singify({ event_id: evenIdusr_id user?.id })
       });
-      if (!response.ok) throw new Error("Failed to add comment");
-      return response.json();
+      if(!respse.ok) row new rror("Faile to share event");
+      return response.json(    },    onSucess:  {
+     queryClin.invalideQuere{ queryKey: ["/api/shared-events"] }   toast.success("Evno ompartido exitosamente"  
+    onError: () => {
+      toast.error("Error alompati el evo");
+    }
+  });
+
+  // elete shred event muation   dleeSredEvenMutaton = usMutation({
+    mutationFn: aync(id: number) >  cons esponse = await fetch(`apished-events${id}`, {
+        method: "DELETE"
+      });
+      if (!response.ok) throw new Error("Fild t delete shadevent");     return respne.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["shared-events"] });
-      setNewComment("");
+      queryClient.invalieQueries({ queryKey: ["/p/shared-events"] })oas.succss("Event elminado exitomente";
+    ,
+   onEro: ( =>
+  tast" al limar elevnt"   }  )
+
+  // Add comment mutation  onst addCommentMutati = ueMutation({
+    muaionFn: asyn ({ sared_event_id, comment }: { sred_event_i: number; comment: string }) >  cons esponse = await fetch("apishared-event-omments", {
+        method: "POST",
+        headers: { "Content-Type": "ppication/jso" },
+        boy: JSON.stingify({ red_event_id, comment, use_i: user.id })
+      });
+      if (!respnse.ok) trw new Eror"Failed to add omment");
+      ret rsponse.json();
+    }
+   onSuccess: (=>     queryClie.invalieQueries({ queryKey: ["/p/shared-events"] })etNewComment"";
+ tos.sucess"Comntaio agegad exitosamente");
     },
-  });
+    onEror:() => 
+    tat"oal agarlcomntaio")
+  cost gtDsInMonth= (date: Date{
+   return ne Dae(dategetFullYea, date.getMonth( + 1, 0).gtDate()  };
+cons getFistDaOfMonth = (dt: Date) => {
+    retur new Date(te.getFulYear(), dategetMonth(), 1).getDay();
+  ;
 
-  const monthStart = startOfMonth(currentDate);
-  const monthEnd = endOfMonth(currentDate);
-  const monthDays = eachDayOfInterval({ start: monthStart, end: monthEnd });
-
-  const eventsForDate = (date: Date) => {
-    return events.filter((event: SharedEventWithDetails) => 
-      isSameDay(new Date(event.date), date)
-    );
+  onst gtEvetForDay = (day: number) => {constdateStr=`${currentMonth.getFullYear()}-${String(currentMonth.getMonth()+1).padStart(2, 0)}-${String(day).padStart(2, 0)}`;returnevents.filter(event=>ve.event_date=== datStr); };
+con handlDaylick = day: number) => {
+  onst dyEvents = gtensForDay(day);
+if(yEvens.lngth > 0) {
+      etSDayEvnts(dayEts);
+      seIsVieDalogOpen(true);
+    }
   };
 
-  const handleAddComment = () => {
-    if (!selectedEvent || !newComment.trim()) return;
-    
-    addCommentMutation.mutate({
-      eventId: selectedEvent.id,
-      comment: newComment.trim(),
-    });
+  cons handleSareEvent = (eventId: numbr) => {
+   shareEventMutatin.utate(eveId);
+  };
+   hanleDeleteShreent = (id: number)> {
+    if (confirm("¿Estás seguro de que quiereseliminrete evento comartid?")) {
+    deleharentMutation.mtate(i);
+    }
   };
 
-  const getCategoryColor = (categoryId: number | null) => {
-    if (!categoryId) return "#6B7280";
-    const category = categories.find((cat: EventCategory) => cat.id === categoryId);
-    return category?.color || "#6B7280";
-  };
-
-  const getCategoryName = (categoryId: number | null) => {
-    if (!categoryId) return "Sin categoría";
-    const category = categories.find((cat: EventCategory) => cat.id === categoryId);
-    return category?.name || "Sin categoría";
-  };
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
-    );
+  const hndleAddCommen = (sharId:numb) =>
+ if(!newCommnttim()) etun;
+   CommentMutaton.utate({ shared_evnt_id sharedEventId comment: newComment };
   }
+
+  const handleViewEventDetails = (event: SharedEvent) => {   setSelectedEvent(event);;
+
+  const renderCalendar = () => {
+    const daysInMonth = eDaInMonh(curentMonth);
+    const frstDay = etFirstDayfMonth(currentMonth);
+    const days = ];
+
+    // Eptycell fr days beore month starts
+    orlet i = 0; i < firstDay; i++) {
+      days.pus(<div key={`empty-${i}`} clssName="h-24 bodr borer-border/20"></di>);
+    }
+
+    // Days of te month
+    for (let da = 1; ay < daysInMonth; day++) {
+      const dayEvents  getEventsForDay(day);
+      const Today = new Date()toDateString()  new Dte(curretMonth.gtFullYear(), currentMonth.tMoth(), y).toDateSting();
+
+      ays.push(        iv
+          ky={y}
+         sm{`h-24 border border-border/20 p-2 cursor-poinr hover:bg-mued/50 transitioncolors rlativ ${isToy? 'b-pimry5' : ''}`}
+          onlick={() => hneDylick(dy)}
+        >
+          < className="justiy-beteen items-strt mb-1">
+            <sn classNam={`xt-sm fo-medium ${oday ? 'text-riary' : 'text-fregound'}`}>{day}</span>
+            {dayEvents.length  0 && 
+               1                MessageSquareaa="h-3 3text-mutedforegoun" />
+                <span className="text-xs text-muteoregrond">{dayEvents.length}</span>
+              </div>
+            )}
+          </div>
+          <div className="space-y-1">
+            {dayEvents.sice(0, 2).map((event, index) => (
+              <div
+                key={index}
+                cassName="text-xs p-1 rounded truncate"
+                 olor: event.category_color + '20', c event.category_ }}
+              >
+                {event.event_time && `${event.event_time} `{event.title
+              <div>
+            ))}
+            {dayEvents.length  2 && (              div setext-xs tetuted-foreground+dayEvents.length - 2} ásdiv
+            )}
+                 </div>
+      ;
+    
+
+    return ays;
+  };
+
+  const monthNames = ["Enero", "Febrero", "Marzo", "Abrl", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noiembre", "Diciembre"];
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Calendario Compartido</h1>
-        <div className="flex items-center space-x-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setCurrentDate(subMonths(currentDate, 1))}
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <h2 className="text-xl font-semibold">
-            {format(currentDate, "MMMM yyyy", { locale: es })}
-          </h2>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setCurrentDate(addMonths(currentDate, 1))}
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
+      <div className="flex justify-between items-center">
+        <h1 className="text-3xl font-bold">lendaio ompartido</h1>
+        <div className="text-sm text-muted-foregrund">
+          Evetos compartidos por odos los usuarios
         </div>
       </div>
 
-      {/* Event Categories Legend */}
+      {/* Caldar */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Tag className="h-5 w-5" />
-            Categorías de Eventos
-          </CardTitle>
-        </CardHeader>
+        <dHede>
+          <di className="flex -een itms-cter">
+            <a>
+            onhNames[entMonh.gtonth()]} currentMonth.getFulYar(            <Carditle>
+            <dv className="fex gap-2">
+          to
+               rie
+               ssm
+               Month(new atecrrento.getFullYear), rentMonth.getMonth() - 
+            >
+                Antrior
+              </Button>
+              <Button
+                aiant="utli"
+               ize=""
+                onClick={() > setCurrentMonth(ne Date())}
+              
+                Hoy              to
+              
+                variant="on"
+                se=sm
+               olcMonthnew Dte(currento.getFullYear), crrMonth.getMonth() + }
+              >
+                Suiene
+           <B>
+            </div>
+          
+        </Cardeader>
         <CardContent>
-          <div className="flex flex-wrap gap-2">
-            {categories.map((category: EventCategory) => (
-              <Badge
-                key={category.id}
-                variant="secondary"
-                style={{ backgroundColor: category.color + "20", color: category.color }}
-              >
-                {category.name}
-              </Badge>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+          <div className="grid grid-cols-7 gap-0 mb-2["Dom", "Lun", "Mar", "Mié","Ju", "Vi", "Sáb"].map((day) => (
+              <div ey={} clsName="h-10flexites-centerjusify-cnter te font-em text-md-orerud border border-border/20"
+              
+                }          <div>
+          <div cassNam="gri gi-col-7 ap-0">{renderCalendar()}
+</div>
+    </CadCotent>
+      </Car>
 
-      {/* Calendar Grid */}
-      <Card>
-        <CardContent className="p-0">
-          <div className="grid grid-cols-7 gap-0 border-t">
-            {["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"].map((day) => (
-              <div
-                key={day}
-                className="p-3 text-center font-semibold text-sm border-r border-b bg-muted/50"
-              >
-                {day}
-              </div>
-            ))}
-            {monthDays.map((day) => {
-              const dayEvents = eventsForDate(day);
-              const isCurrentMonth = isSameMonth(day, currentDate);
-              const isSelected = selectedDate && isSameDay(day, selectedDate);
+      /* View Dy Evnts Dlog*/}
+      <ilog open={sViewDialogOpe} onOpenChane={setIsVewDialoOen}>
+        <DilogCtnt classNa="ma-2xl">
+          <DalogHeadr>
+          <DiaogTl>EvosComptidos dl día</DlogTitl>    </DialogHeader>
+<divclassName="space-y-3max-h-96overflow-y-auto">
+{selectedDayEvent.ma((evet) =>(     <Cardkey={event.id}>
+<CardContentclassName="p-4">
+<divclassName="flexjustify-betweenitems-startmb-2">
+<dive="flx-1"><divclassName="flexitems-centergap-2mb-2">
+<div
+className="w-3h-3rounded"
+ style={{ backgrundColor:eventcategory_color }}></div>
+<h3className="font-medium">{event.title}</h3>
+{event.event_time&&<spanclassName="text-smtext-muted-foreground">{event.event_time}</span>}
+</div>
+{event.description&&(
+<pclassName="text-smtext-muted-foregroundmb-2">{event.description}</p>
+      )}    <divclassName="flexitems-centergap-2text-xstext-muted-foreground">
+<span>{event.category_name}</span>
+<span>•</span>
+<span>Compartidopor{eventshared_by_user?full_name}</span></div>
+</div>
+divflex gap2"><Buttonsize="sm"variant="outline"onClick={()=>handleViewEventDetails(event)}>
+<EyeclassName="h-3w-3"/>
+</Button>
+   {eventshared_by_user_id === user?id&&(
+<Buttonsize="sm"variant="outline"onClick={()=>handleDeleteSharedEvent(eventid)}><Trash2className="h-3w-3"/>
+</Button>
+)}
+</div>
+</div>
+{eventcomments&&eventcommentslength > 0 && (<divclassName="mt-3pt-3border-tborder-border/20">
+             vclassName="flexitems-centergap-2mb-2">
+<MessageSquareclassName="h-3w-3"/><spanclassName="text-xsfont-medium">{event.comments.length}comentarios</span>
+</div>
+<divclassName="space-y-2">
+ {vent.omms.slic(0,).mp((commnt) => (
+                          <di ky={commeid} lssName="xt-xs b-muted/30 p-2 roudd"><divclassName="font-medium">{comment.user?.full_name}au{comment.comment}</div></div>
+))}
+     comnts.length > 2  
+                        <div cassNam="tet-xsxt-utedforeground">+{event.omms.lnth  }omentrio má</div>
+                        )}
+                    <div    </div>
+)}            </CardContent>
+</Card>
+)
+          </div> </DialogContent>
+</Dialog>
 
-              return (
-                <TooltipProvider key={day.toISOString()}>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <div
-                        className={`min-h-[100px] p-2 border-r border-b cursor-pointer transition-colors ${
-                          !isCurrentMonth ? "bg-muted/30 text-muted-foreground" : "hover:bg-muted/50"
-                        } ${isSelected ? "bg-primary/10 border-primary" : ""}`}
-                        onClick={() => {
-                          setSelectedDate(day);
-                          if (dayEvents.length > 0) {
-                            setSelectedEvent(dayEvents[0]);
-                            setShowEventDetails(true);
-                          }
-                        }}
-                      >
-                        <div className="font-semibold text-sm mb-1">
-                          {format(day, "d")}
-                        </div>
-                        <div className="space-y-1">
-                          {dayEvents.slice(0, 3).map((event: SharedEventWithDetails) => (
-                            <div
-                              key={event.id}
-                              className="text-xs p-1 rounded truncate"
-                              style={{
-                                backgroundColor: getCategoryColor(event.categoryId) + "20",
-                                color: getCategoryColor(event.categoryId),
-                              }}
-                            >
-                              {event.time && (
-                                <span className="font-medium">
-                                  {format(new Date(`1970-01-01T${event.time}`), "HH:mm")} - 
-                                </span>
-                              )}
-                              {event.title}
-                            </div>
-                          ))}
-                          {dayEvents.length > 3 && (
-                            <div className="text-xs text-muted-foreground">
-                              +{dayEvents.length - 3} más
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </TooltipTrigger>
-                    {dayEvents.length > 0 && (
-                      <TooltipContent>
-                        <div className="space-y-2">
-                          <div className="font-semibold">
-                            {format(day, "d MMMM yyyy", { locale: es })}
-                          </div>
-                          {dayEvents.map((event: SharedEventWithDetails) => (
-                            <div key={event.id} className="space-y-1">
-                              <div className="flex items-center gap-2">
-                                <div
-                                  className="w-3 h-3 rounded-full"
-                                  style={{ backgroundColor: getCategoryColor(event.categoryId) }}
-                                />
-                                <span className="font-medium">{event.title}</span>
-                              </div>
-                              {event.time && (
-                                <div className="text-sm text-muted-foreground ml-5">
-                                  <Clock className="inline h-3 w-3 mr-1" />
-                                  {format(new Date(`1970-01-01T${event.time}`), "HH:mm")}
-                                </div>
-                              )}
-                              <div className="text-sm text-muted-foreground ml-5">
-                                Compartido por: {event.sharedByUser.fullName}
-                              </div>
-                              <div className="text-sm text-muted-foreground ml-5">
-                                {getCategoryName(event.categoryId)}
-                              </div>
-                              {event.description && (
-                                <div className="text-sm ml-5">{event.description}</div>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      </TooltipContent>
-                    )}
-                  </Tooltip>
-                </TooltipProvider>
-              );
-            })}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Event Details Dialog */}
-      <Dialog open={showEventDetails} onOpenChange={setShowEventDetails}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Detalles del Evento Compartido</DialogTitle>
-          </DialogHeader>
-          {selectedEvent && (
-            <SharedEventDetails
-              event={selectedEvent}
-              category={categories.find((cat: EventCategory) => cat.id === selectedEvent.categoryId)}
-              currentUser={user}
-              newComment={newComment}
-              onCommentChange={setNewComment}
-              onAddComment={handleAddComment}
-              onClose={() => setShowEventDetails(false)}
-            />
-          )}
-        </DialogContent>
-      </Dialog>
-    </div>
-  );
-}
-
-function SharedEventDetails({ 
-  event, 
-  category, 
-  currentUser, 
-  newComment, 
-  onCommentChange, 
-  onAddComment, 
-  onClose 
-}: {
-  event: SharedEventWithDetails;
-  category?: EventCategory;
-  currentUser: any;
-  newComment: string;
-  onCommentChange: (comment: string) => void;
-  onAddComment: () => void;
-  onClose: () => void;
-}) {
-  return (
-    <div className="space-y-4">
-      <div>
-        <h3 className="text-lg font-semibold">{event.title}</h3>
-        {category && (
-          <Badge
-            variant="secondary"
-            style={{ backgroundColor: category.color + "20", color: category.color }}
-            className="mt-2"
-          >
-            {category.name}
-          </Badge>
-        )}
-      </div>
-
-      <div className="space-y-2">
-        <div className="flex items-center gap-2 text-sm">
-          <Calendar className="h-4 w-4" />
-          {format(new Date(event.date), "d MMMM yyyy", { locale: es })}
-        </div>
-        {event.time && (
-          <div className="flex items-center gap-2 text-sm">
-            <Clock className="h-4 w-4" />
-            {format(new Date(`1970-01-01T${event.time}`), "HH:mm")}
-          </div>
-        )}
-        <div className="flex items-center gap-2 text-sm">
-          <User className="h-4 w-4" />
-          Compartido por: {event.sharedByUser.fullName}
-        </div>
-      </div>
-
-      {event.description && (
-        <div>
-          <h4 className="font-medium mb-1">Descripción</h4>
-          <p className="text-sm text-muted-foreground">{event.description}</p>
-        </div>
-      )}
-
-      <Separator />
-
-      {/* Comments Section */}
-      <div>
-        <h4 className="font-medium mb-3 flex items-center gap-2">
-          <MessageSquare className="h-4 w-4" />
-          Comentarios
-        </h4>
-        
-        {/* Add Comment */}
-        <div className="space-y-2 mb-4">
-          <Textarea
-            placeholder="Añade un comentario..."
-            value={newComment}
-            onChange={(e) => onCommentChange(e.target.value)}
-            rows={2}
-          />
-          <Button onClick={onAddComment} disabled={!newComment.trim()}>
-            Enviar Comentario
-          </Button>
-        </div>
-
-        {/* Comments List */}
-        <div className="space-y-3 max-h-60 overflow-y-auto">
-          {event.comments && event.comments.length > 0 ? (
-            event.comments.map((comment: any) => (
-              <div key={comment.id} className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <span className="font-medium text-sm">{comment.user.fullName}</span>
-                  <span className="text-xs text-muted-foreground">
-                    {format(new Date(comment.createdAt), "d MMM HH:mm", { locale: es })}
-                  </span>
-                </div>
-                <p className="text-sm text-muted-foreground bg-muted/30 p-2 rounded">
-                  {comment.comment}
-                </p>
-              </div>
-            ))
-          ) : (
-            <p className="text-sm text-muted-foreground">No hay comentarios aún.</p>
-          )}
-        </div>
-      </div>
-
-      <div className="flex justify-end">
-        <Button variant="outline" onClick={onClose}>
-          Cerrar
+{/*EventDetailsDialog*/}
+<Dialogopen=!!selectdEent} onOpnChage={() => setSeleceEvent(null)}>
+        <DialogContnt clasName="max-w-2xl">
+          <DialogHeade>
+            <DialogTitle>Detalles del Evento</DialogTle>
+          </DalgHeader>
+          {selectedEvet
+        <iv classNam="ace-y-4"><Card>
+<CardCtclassName="p-4"
+                  <divclassName="b2       <div
+ rounded"
+                      style={{ backgroundColor: selectedEvent.category_color}}       ></div>
+<h3lassName="fnt-ediu">{selectedEvetit}</3>
+   </div>
+{selectedEvt.evt_tme && (
+                    <pase=text-sm text-mutedforeground mb2Hora:{selecteEent.event_tie}</>                  )}
+                  setEventdescripion && (
+                    p clasametetsm etmtrgod mb-2{secdEve.dscition}</p>
+              )}
+                  diatextxstextmteoregrond>
+                    <pan>{slcategory_}<span>
+            <pan cassNam="mx-2">•</spa>
+<span>Compartidopor{etevent.d_b_user?_nae</span>     </iv>
+</CardContent>
+<Card>
+         {/* Commn Sion*/}
+                             <h3 className="onmeium mb>Comentario</3>
+                <div className="space-y-2 max-h-8 overflow-y-auto">
+                  event.comments?.map((comment)=>(
+                <div key={comment.id} className="3pe">
+               <div className="flex  ites-start m-">
+       <spanclassName="font-meium text-sm">{comment.user?.full_name}<span>            <spanclassName="text-xstext-uted-foreground
+                          new Date(met.created_at)toLoaleDateString()
+                        /san    >                      p "text-sm>{comment.cmmn}</                    </                 ))}
+/div>
+                
+                {/* AddCon */}
+                <v classNm="mt-3 fex gap-2">
+          Inpu
+        placeholderAgregar un ario...
+      v
+       asNasNae="flx-1">
+                  <Button 
+              onClick={()=>selectedEvent&&oent(selectedEv.id)
+                   nCoe || addCommentMutation.isPending}
+    Eviar
         </Button>
       </div>
     </div>

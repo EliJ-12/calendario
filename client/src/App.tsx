@@ -8,10 +8,12 @@ import { Loader2 } from "lucide-react";
 
 // Pages
 import AuthPage from "@/pages/auth-page";
-import PersonalCalendar from "@/pages/calendar/personal";
-import SharedCalendar from "@/pages/calendar/shared";
+import EmployeeDashboard from "@/pages/employee/dashboard";
+import EmployeeAbsences from "@/pages/employee/absences";
+import EmployeeWorkHistory from "@/pages/employee/history";
 import AdminDashboard from "@/pages/admin/dashboard";
 import AdminEmployees from "@/pages/admin/employees";
+import AdminAbsences from "@/pages/admin/absences";
 
 // Protected Route Component
 function ProtectedRoute({ 
@@ -36,7 +38,7 @@ function ProtectedRoute({
   }
 
   if (!allowedRoles.includes(user.role as any)) {
-    return <Redirect to={user.role === 'admin' ? '/admin' : '/calendar'} />;
+    return <Redirect to={user.role === 'admin' ? '/admin' : '/dashboard'} />;
   }
 
   return <Component />;
@@ -47,18 +49,15 @@ function Router() {
     <Switch>
       <Route path="/auth" component={AuthPage} />
       
-      {/* Calendar Routes - Both users and admins */}
-      <Route path="/calendar">
-        {() => {
-          const { user } = useAuth();
-          return user ? <PersonalCalendar user={user} /> : <Redirect to="/auth" />;
-        }}
+      {/* Employee Routes */}
+      <Route path="/dashboard">
+        <ProtectedRoute component={EmployeeDashboard} allowedRoles={['employee']} />
       </Route>
-      <Route path="/calendar/shared">
-        {() => {
-          const { user } = useAuth();
-          return user ? <SharedCalendar user={user} /> : <Redirect to="/auth" />;
-        }}
+      <Route path="/dashboard/history">
+        <ProtectedRoute component={EmployeeWorkHistory} allowedRoles={['employee']} />
+      </Route>
+      <Route path="/dashboard/absences">
+        <ProtectedRoute component={EmployeeAbsences} allowedRoles={['employee']} />
       </Route>
 
       {/* Admin Routes */}
@@ -68,14 +67,17 @@ function Router() {
       <Route path="/admin/employees">
         <ProtectedRoute component={AdminEmployees} allowedRoles={['admin']} />
       </Route>
+      <Route path="/admin/work-logs">
+        {/* Reuse dashboard stats or create separate table page */}
+        <ProtectedRoute component={AdminDashboard} allowedRoles={['admin']} />
+      </Route>
+      <Route path="/admin/absences">
+        <ProtectedRoute component={AdminAbsences} allowedRoles={['admin']} />
+      </Route>
 
-      {/* Redirect root based on role */}
+      {/* Redirect root based on auth is handled in login, but fallback: */}
       <Route path="/">
-        {() => {
-          const { user } = useAuth();
-          if (!user) return <Redirect to="/auth" />;
-          return <Redirect to={user.role === 'admin' ? '/admin' : '/calendar'} />;
-        }}
+        <Redirect to="/auth" />
       </Route>
 
       <Route component={NotFound} />

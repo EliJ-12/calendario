@@ -6,11 +6,11 @@ import { storage } from "./storage.js";
 import { setupAuth } from "./auth.js";
 import { api } from "../shared/routes.js";
 import { z } from "zod";
-import { insertUserSchema, insertPersonalEventSchema, insertSharedEventSchema, insertSharedEventCommentSchema } from "../shared/schema.js";
+import { insertUserSchema, insertWorkLogSchema, insertAbsenceSchema } from "../shared/schema.js";
 import { createClient } from '@supabase/supabase-js';
 
 import { db } from "./db.js";
-import { users, personalEvents, sharedEvents, sharedEventComments, eventCategories } from "../shared/schema.js";
+import { users, workLogs } from "../shared/schema.js";
 import { eq, and, gte, lte } from "drizzle-orm";
 
 export async function registerRoutes(
@@ -156,272 +156,200 @@ export async function registerRoutes(
     }
   });
 
-  // === Event Categories ===
-  app.get(api.eventCategories.list.path, async (req, res) => {
-    try {
-      const categories = await db.select().from(eventCategories);
-      res.json(categories);
-    } catch (error) {
-      console.error('Error fetching event categories:', error);
-      res.status(500).json({ message: "Failed to fetch event categories" });
-    }
-  });
-
-  // === Personal Events ===
-  app.get(api.personalEvents.list.path, async (req, res) => {
+  // === Work Logs ===
+  app.get(api.workLogs.list.path, async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
     
+    // Admins see all or filter. Employees see only theirs.
     const user = req.user as any;
     let userId = user.id;
     
-    if (user.role === 'admin' && req.query.userId) {
-      userId = Number(req.query.userId);
-    }
-
-    try {
-      const baseQuery = db.select({
-        id: personalEvents.id,
-        userId: personalEvents.userId,
-        categoryId: personalEvents.categoryId,
-        title: personalEvents.title,
-        description: personalEvents.description,
-        date: personalEvents.date,
-        time: personalEvents.time,
-        isAllDay: personalEvents.isAllDay,
-        createdAt: personalEvents.createdAt,
-        updatedAt: personalEvents.updatedAt,
-        user: {
-          id: users.id,
-          username: users.username,
-          fullName: users.fullName,
-          role: users.role,
-          createdAt: users.createdAt
-        },
-        category: {
-          id: eventCategories.id,
-          name: eventCategories.name,
-          color: eventCategories.color,
-          createdAt: eventCategories.createdAt
-        }
-      })
-      .from(personalEvents)
-      .leftJoin(users, eq(personalEvents.userId, users.id))
-      .leftJoin(eventCategories, eq(personalEvents.categoryId, eventCategories.id));
-
-      let events;
-      if (req.query.startDate && req.query.endDate) {
-        events = await baseQuery.where(
-          and(
-            eq(personalEvents.userId, userId),
-            gte(personalEvents.date, req.query.startDate as string),
-            lte(personalEvents.date, req.query.endDate as string)
-          )
-        );
+    if (user.role === 'admin') {
+      // If admin passed a userId query param, use it. Otherwise get all.
+      if (req.query.userId) {
+        userId = Number(req.query.userId);
       } else {
-        events = await baseQuery.where(eq(personalEvents.userId, userId));
+        userId = undefined; // Get all
       }
-
-      res.json(events);
-    } catch (error) {
-      console.error('Error fetching personal events:', error);
-      res.status(500).json({ message: "Failed to fetch personal events" });
     }
+
+    const logs = await storage.getWorkLogs(
+      userId,
+      req.query.startDate as string,
+      req.query.endDate as string
+    );
+    res.json(logs);
   });
 
-  app.post(api.personalEvents.create.path, async (req, res) => {
+  app.post(api.workLogs.create.path, async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
     
     try {
-      const input = insertPersonalEventSchema.parse(req.body);
-      const event = await db.insert(personalEvents).values({
+      const input = insertWorkLogSchema.parse(req.body);
+      
+      // Check for duplicate work log on same date for same user and type
+      const existingLogs = await storage.getWorkLogs(input.userId, input.date, input.date);
+      const duplicate = existingLogs.find(log => 
+        log.date === input.date && 
+        log.type === input.type &&
+        log.userId === input.userId
+      );
+      
+      if (duplicate) {
+        return res.status(409).json({ 
+          message: `Ya existe un registro de ${input.type === 'work' ? 'trabajo' : 'ausencia'} para esta fecha.` 
+        });
+      }
+      
+      const log = await storage.createWorkLog({
+        ...input,
+        userId: (req.user as any).id // Enforce current user
+      });
+      res.status(201).json(log);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors[0].message });
+      }
+      throw err;
+    }
+  });
+
+  app.patch(api.workLogs.update.path, async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
+    
+    const id = Number(req.params.id);
+    const existing = await storage.getWorkLog(id);
+    if (!existing) return res.status(404).json({ message: "Not found" });
+    
+    // Only owner (if pending) or admin can update
+    const user = req.user as any;
+    if (user.role !== 'admin' && existing.userId !== user.id) {
+      return res.status(403).json({ message: "Cannot edit this log" });
+    }
+
+    const updated = await storage.updateWorkLog(id, req.body);
+    res.json(updated);
+  });
+
+  app.delete(api.workLogs.update.path, async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
+    
+    const id = Number(req.params.id);
+    const existing = await storage.getWorkLog(id);
+    if (!existing) return res.status(404).json({ message: "Not found" });
+    
+    const user = req.user as any;
+    if (user.role !== 'admin' && existing.userId !== user.id) {
+      return res.status(403).json({ message: "Cannot delete this log" });
+    }
+
+    await storage.deleteWorkLog(id);
+    res.sendStatus(204);
+  });
+
+  // === Absences ===
+  app.get(api.absences.list.path, async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
+
+    const user = req.user as any;
+    let userId = user.id;
+
+    if (user.role === 'admin') {
+      if (req.query.userId) {
+         userId = Number(req.query.userId);
+      } else {
+        userId = undefined;
+      }
+    }
+
+    const list = await storage.getAbsences(userId, req.query.status as string);
+    res.json(list);
+  });
+
+  app.post(api.absences.create.path, async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
+
+    try {
+      const input = insertAbsenceSchema.parse(req.body);
+      
+      // Check for overlapping absence requests
+      const existingAbsences = await storage.getAbsences(input.userId);
+      const overlap = existingAbsences.find(absence => {
+        const existingStart = new Date(absence.startDate);
+        const existingEnd = new Date(absence.endDate);
+        const newStart = new Date(input.startDate);
+        const newEnd = new Date(input.endDate);
+        
+        return (
+          (newStart >= existingStart && newStart <= existingEnd) ||
+          (newEnd >= existingStart && newEnd <= existingEnd) ||
+          (newStart <= existingStart && newEnd >= existingEnd)
+        );
+      });
+      
+      if (overlap) {
+        return res.status(409).json({ 
+          message: "Ya existe una solicitud de ausencia para este período." 
+        });
+      }
+      
+      const absence = await storage.createAbsence({
         ...input,
         userId: (req.user as any).id
-      }).returning();
-      res.status(201).json(event[0]);
+      });
+      res.status(201).json(absence);
     } catch (err) {
-      if (err instanceof z.ZodError) {
+       if (err instanceof z.ZodError) {
         return res.status(400).json({ message: err.errors[0].message });
       }
-      console.error('Error creating personal event:', err);
-      res.status(500).json({ message: "Failed to create personal event" });
+      throw err;
     }
   });
 
-  app.patch(api.personalEvents.update.path, async (req, res) => {
+  app.patch(api.absences.updateStatus.path, async (req, res) => {
+    if (!req.isAuthenticated() || (req.user as any).role !== 'admin') {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    
+    const id = Number(req.params.id);
+    const updated = await storage.updateAbsenceStatus(id, req.body.status);
+    res.json(updated);
+  });
+
+  // Allow employees to delete their own absence requests (only if pending)
+  app.delete("/api/absences/:id", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
     
     const id = Number(req.params.id);
-    const existing = await db.select().from(personalEvents).where(eq(personalEvents.id, id)).limit(1);
-    
-    if (!existing.length) return res.status(404).json({ message: "Event not found" });
+    const absence = await storage.getAbsence(id);
+    if (!absence) return res.status(404).json({ message: "Not found" });
     
     const user = req.user as any;
-    if (user.role !== 'admin' && existing[0].userId !== user.id) {
-      return res.status(403).json({ message: "Cannot edit this event" });
+    // Only owner (if pending) or admin can delete
+    if (user.role !== 'admin' && (absence.userId !== user.id || absence.status !== 'pending')) {
+      return res.status(403).json({ message: "Cannot delete this absence request" });
     }
 
-    try {
-      const updated = await db.update(personalEvents)
-        .set({ ...req.body, updatedAt: new Date() })
-        .where(eq(personalEvents.id, id))
-        .returning();
-      res.json(updated[0]);
-    } catch (error) {
-      console.error('Error updating personal event:', error);
-      res.status(500).json({ message: "Failed to update personal event" });
-    }
+    await storage.deleteAbsence(id);
+    res.sendStatus(204);
   });
 
-  app.delete(api.personalEvents.delete.path, async (req, res) => {
+  // Allow employees to update their own absence requests (only if pending)
+  app.patch("/api/absences/:id", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
     
     const id = Number(req.params.id);
-    const existing = await db.select().from(personalEvents).where(eq(personalEvents.id, id)).limit(1);
-    
-    if (!existing.length) return res.status(404).json({ message: "Event not found" });
-    
-    const user = req.user as any;
-    if (user.role !== 'admin' && existing[0].userId !== user.id) {
-      return res.status(403).json({ message: "Cannot delete this event" });
-    }
-
-    try {
-      await db.delete(personalEvents).where(eq(personalEvents.id, id));
-      res.sendStatus(204);
-    } catch (error) {
-      console.error('Error deleting personal event:', error);
-      res.status(500).json({ message: "Failed to delete personal event" });
-    }
-  });
-
-  // === Shared Events ===
-  app.get(api.sharedEvents.list.path, async (req, res) => {
-    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
-
-    try {
-      const events = await db.select({
-        id: sharedEvents.id,
-        originalEventId: sharedEvents.originalEventId,
-        sharedByUserId: sharedEvents.sharedByUserId,
-        title: sharedEvents.title,
-        description: sharedEvents.description,
-        date: sharedEvents.date,
-        time: sharedEvents.time,
-        isAllDay: sharedEvents.isAllDay,
-        categoryId: sharedEvents.categoryId,
-        createdAt: sharedEvents.createdAt,
-        updatedAt: sharedEvents.updatedAt,
-        sharedByUser: {
-          id: users.id,
-          username: users.username,
-          fullName: users.fullName,
-          role: users.role,
-          createdAt: users.createdAt
-        },
-        category: {
-          id: eventCategories.id,
-          name: eventCategories.name,
-          color: eventCategories.color,
-          createdAt: eventCategories.createdAt
-        }
-      })
-      .from(sharedEvents)
-      .leftJoin(users, eq(sharedEvents.sharedByUserId, users.id))
-      .leftJoin(eventCategories, eq(sharedEvents.categoryId, eventCategories.id));
-
-      res.json(events);
-    } catch (error) {
-      console.error('Error fetching shared events:', error);
-      res.status(500).json({ message: "Failed to fetch shared events" });
-    }
-  });
-
-  app.post(api.sharedEvents.create.path, async (req, res) => {
-    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
-    
-    try {
-      const input = insertSharedEventSchema.parse(req.body);
-      const event = await db.insert(sharedEvents).values({
-        ...input,
-        sharedByUserId: (req.user as any).id
-      }).returning();
-      res.status(201).json(event[0]);
-    } catch (err) {
-      if (err instanceof z.ZodError) {
-        return res.status(400).json({ message: err.errors[0].message });
-      }
-      console.error('Error creating shared event:', err);
-      res.status(500).json({ message: "Failed to create shared event" });
-    }
-  });
-
-  app.patch(api.sharedEvents.update.path, async (req, res) => {
-    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
-    
-    const id = Number(req.params.id);
-    const existing = await db.select().from(sharedEvents).where(eq(sharedEvents.id, id)).limit(1);
-    
-    if (!existing.length) return res.status(404).json({ message: "Event not found" });
+    const absence = await storage.getAbsence(id);
+    if (!absence) return res.status(404).json({ message: "Not found" });
     
     const user = req.user as any;
-    if (existing[0].sharedByUserId !== user.id) {
-      return res.status(403).json({ message: "Cannot edit this event" });
+    // Only owner (if pending) or admin can update
+    if (user.role !== 'admin' && (absence.userId !== user.id || absence.status !== 'pending')) {
+      return res.status(403).json({ message: "Cannot edit this absence request" });
     }
 
-    try {
-      const updated = await db.update(sharedEvents)
-        .set({ ...req.body, updatedAt: new Date() })
-        .where(eq(sharedEvents.id, id))
-        .returning();
-      res.json(updated[0]);
-    } catch (error) {
-      console.error('Error updating shared event:', error);
-      res.status(500).json({ message: "Failed to update shared event" });
-    }
-  });
-
-  app.delete(api.sharedEvents.delete.path, async (req, res) => {
-    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
-    
-    const id = Number(req.params.id);
-    const existing = await db.select().from(sharedEvents).where(eq(sharedEvents.id, id)).limit(1);
-    
-    if (!existing.length) return res.status(404).json({ message: "Event not found" });
-    
-    const user = req.user as any;
-    if (existing[0].sharedByUserId !== user.id) {
-      return res.status(403).json({ message: "Cannot delete this event" });
-    }
-
-    try {
-      await db.delete(sharedEvents).where(eq(sharedEvents.id, id));
-      res.sendStatus(204);
-    } catch (error) {
-      console.error('Error deleting shared event:', error);
-      res.status(500).json({ message: "Failed to delete shared event" });
-    }
-  });
-
-  // === Shared Event Comments ===
-  app.post(api.sharedEventComments.create.path, async (req, res) => {
-    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
-    
-    try {
-      const eventId = Number(req.params.eventId);
-      const input = insertSharedEventCommentSchema.parse(req.body);
-      const comment = await db.insert(sharedEventComments).values({
-        ...input,
-        sharedEventId: eventId,
-        userId: (req.user as any).id
-      }).returning();
-      res.status(201).json(comment[0]);
-    } catch (err) {
-      if (err instanceof z.ZodError) {
-        return res.status(400).json({ message: err.errors[0].message });
-      }
-      console.error('Error creating comment:', err);
-      res.status(500).json({ message: "Failed to create comment" });
-    }
+    const updated = await storage.updateAbsence(id, req.body);
+    res.json(updated);
   });
 
   app.delete("/api/users/:id", async (req, res) => {
