@@ -33,7 +33,9 @@ const shouldUseSsl = process.env.NODE_ENV === "production";
 export const pool = new Pool({
   connectionString: sanitizedConnectionString,
   ssl: shouldUseSsl ? { rejectUnauthorized: false } : undefined,
-  connectionTimeoutMillis: 10_000,
-  idleTimeoutMillis: 30_000,
+  connectionTimeoutMillis: 60_000,
+  idleTimeoutMillis: 300_000,
+  max: 20,
+  min: 2,
 });
 export const db = drizzle(pool, { schema });
