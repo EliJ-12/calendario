@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import multer from "multer";
 import path from "path";
 import { storage } from "./storage.js";
-import { setupAuth } from "./auth.js";
+import { setupAuth, authenticateToken } from "./auth-simple.js";
 import { api } from "../shared/routes.js";
 import { z } from "zod";
 import { insertUserSchema } from "../shared/schema.js";
