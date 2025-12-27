@@ -15,6 +15,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
+import Layout from "@/components/layout";
 
 const EVENT_CATEGORIES = [
   { value: 'Examen', color: '#FF3E40', bgColor: '#FF3E4010' },
@@ -152,11 +153,12 @@ export default function SharedCalendar() {
   }
 
   return (
-    <TooltipProvider>
-      <div className="p-6 space-y-6">
-        <div className="flex justify-between items-center">
-          <h1 className="text-3xl font-bold">Calendario Compartido</h1>
-        </div>
+    <Layout>
+      <TooltipProvider>
+        <div className="p-6 space-y-6">
+          <div className="flex justify-between items-center">
+            <h1 className="text-3xl font-bold">Calendario Compartido</h1>
+          </div>
 
         {/* Legend */}
         <Card>
@@ -472,5 +474,6 @@ export default function SharedCalendar() {
         </Dialog>
       </div>
     </TooltipProvider>
+    </Layout>
   );
 }

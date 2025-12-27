@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
+import Layout from "@/components/layout";
 
 const EVENT_CATEGORIES = [
   { value: 'Examen', color: '#FF3E40', bgColor: '#FF3E4010' },
@@ -223,24 +224,25 @@ export default function PersonalCalendar() {
   }
 
   return (
-    <TooltipProvider>
-      <div className="p-6 space-y-6">
-        <div className="flex justify-between items-center">
-          <h1 className="text-3xl font-bold">Calendario Personal</h1>
-          <Dialog open={isEventDialogOpen} onOpenChange={setIsEventDialogOpen}>
-            <DialogTrigger asChild>
-              <Button onClick={() => { resetForm(); setSelectedDate(new Date()); }}>
-                <Plus className="mr-2 h-4 w-4" />
-                Nuevo Evento
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>
-                  {editingEvent ? 'Editar Evento' : 'Nuevo Evento'}
-                </DialogTitle>
-              </DialogHeader>
-              <form onSubmit={handleSubmit} className="space-y-4">
+    <Layout>
+      <TooltipProvider>
+        <div className="p-6 space-y-6">
+          <div className="flex justify-between items-center">
+            <h1 className="text-3xl font-bold">Mi Calendario</h1>
+            <Dialog open={isEventDialogOpen} onOpenChange={setIsEventDialogOpen}>
+              <DialogTrigger asChild>
+                <Button onClick={() => { resetForm(); setSelectedDate(new Date()); }}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Nuevo Evento
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>
+                    {editingEvent ? 'Editar Evento' : 'Nuevo Evento'}
+                  </DialogTitle>
+                </DialogHeader>
+                <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
                   <Label htmlFor="title">Título</Label>
                   <Input
@@ -518,5 +520,6 @@ export default function PersonalCalendar() {
         )}
       </div>
     </TooltipProvider>
+    </Layout>
   );
 }
