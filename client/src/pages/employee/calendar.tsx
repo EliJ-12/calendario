@@ -113,11 +113,19 @@ export default function EmployeeCalendar() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!user?.id) {
+      console.error("No user ID available");
+      return;
+    }
+    
     try {
       const submitData = {
         ...formData,
-        userId: user?.id
+        userId: user.id
       };
+      
+      console.log('Submitting event data:', submitData);
       
       if (selectedEvent) {
         await updateEvent({ id: selectedEvent.id, data: submitData });

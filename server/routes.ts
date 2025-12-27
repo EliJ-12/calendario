@@ -214,10 +214,15 @@ export async function registerRoutes(
 
   // Create an event
   app.post("/api/calendar/events", async (req, res) => {
+    console.log('POST /api/calendar/events - Auth check:', req.isAuthenticated());
+    console.log('POST /api/calendar/events - User:', req.user);
+    console.log('POST /api/calendar/events - Body:', req.body);
+    
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
     
     try {
       const eventData = insertCalendarEventSchema.parse(req.body);
+      console.log('Parsed event data:', eventData);
       
       // Assign color based on category
       const categoryColors = {
@@ -234,9 +239,14 @@ export async function registerRoutes(
         userId: (req.user as any).id
       };
       
+      console.log('Final data to insert:', finalData);
+      
       const [event] = await db.insert(calendarEvents).values(finalData).returning();
+      console.log('Event inserted successfully:', event);
+      
       res.status(201).json(event);
     } catch (err) {
+      console.error('Error creating event:', err);
       if (err instanceof z.ZodError) {
         return res.status(400).json({ message: err.errors[0].message });
       }

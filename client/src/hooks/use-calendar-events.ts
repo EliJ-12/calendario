@@ -50,11 +50,18 @@ export function useCalendarEvents(startDate?: string, endDate?: string) {
 
   const createEventMutation = useMutation({
     mutationFn: async (eventData: InsertCalendarEvent) => {
+      console.log('Creating event with data:', eventData);
       const response = await apiRequest("POST", "/api/calendar/events", eventData);
-      return response.json();
+      const result = await response.json();
+      console.log('Event created successfully:', result);
+      return result;
     },
     onSuccess: () => {
+      console.log('Create event success, invalidating queries');
       queryClient.invalidateQueries({ queryKey: ["/api/calendar/events"] });
+    },
+    onError: (error) => {
+      console.error('Failed to create event:', error);
     }
   });
 
