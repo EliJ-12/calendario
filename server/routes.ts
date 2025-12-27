@@ -12,6 +12,7 @@ import { createClient } from '@supabase/supabase-js';
 import { db } from "./db.js";
 import { users, calendarEvents, eventComments } from "../shared/schema.js";
 import { eq, and, gte, lte } from "drizzle-orm";
+import adminUsersRouter from "./admin-users.js";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -42,6 +43,9 @@ export async function registerRoutes(
   }
 
   const supabase = createClient(supabaseUrl, supabaseKey);
+
+  // Usar el router de admin users
+  app.use(adminUsersRouter);
 
   // Configure multer for file uploads
   const upload = multer({

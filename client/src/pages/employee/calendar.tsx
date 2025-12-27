@@ -1,7 +1,7 @@
 import { useAuth } from "@/hooks/use-auth";
-import { useCalendarEvents, CATEGORY_COLORS, CATEGORY_LABELS } from "@/hooks/use-calendar-events";
+import { useCalendarEvents, useSharedEvents, CATEGORY_COLORS, CATEGORY_LABELS } from "@/hooks/use-calendar-events";
 import Layout from "@/components/layout";
-import { Calendar as CalendarIcon, Plus, ChevronLeft, ChevronRight, X, Edit2, Trash2 } from "lucide-react";
+import { Calendar as CalendarIcon, Plus, ChevronLeft, ChevronRight, X, Edit2, Trash2, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, addMonths, subMonths, startOfWeek, endOfWeek, isToday, parseISO } from "date-fns";
@@ -43,6 +43,7 @@ export default function EmployeeCalendar() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [hoveredDate, setHoveredDate] = useState<Date | null>(null);
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
 
   // Form state
   const [formData, setFormData] = useState<{
@@ -72,6 +73,11 @@ export default function EmployeeCalendar() {
     : { start: yearStart, end: yearEnd };
 
   const { events, createEvent, updateEvent, deleteEvent, isCreating, isUpdating, isDeleting } = useCalendarEvents(
+    format(displayInterval.start, 'yyyy-MM-dd'), 
+    format(displayInterval.end, 'yyyy-MM-dd')
+  );
+
+  const { shareEvent } = useSharedEvents(
     format(displayInterval.start, 'yyyy-MM-dd'), 
     format(displayInterval.end, 'yyyy-MM-dd')
   );
@@ -155,6 +161,19 @@ export default function EmployeeCalendar() {
     }
   };
 
+  const handleShareEvent = (event: CalendarEvent) => {
+    setSelectedEvent(event);
+    setShareDialogOpen(true);
+  };
+
+  const confirmShareEvent = () => {
+    if (selectedEvent) {
+      shareEvent(selectedEvent.id);
+      setShareDialogOpen(false);
+      setSelectedEvent(null);
+    }
+  };
+
   const renderMonthView = () => (
     <div className="grid grid-cols-7 gap-1">
       {['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'].map(day => (
@@ -226,6 +245,27 @@ export default function EmployeeCalendar() {
                         {event.description && <div className="text-xs text-muted-foreground ml-5">{event.description}</div>}
                         <div className="text-xs text-muted-foreground ml-5">
                           {CATEGORY_LABELS[event.category as keyof typeof CATEGORY_LABELS]}
+                        </div>
+                        <div className="flex gap-2 ml-5">
+                          {user && event.userId === user.id && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleShareEvent(event)}
+                              className="h-6 px-2 text-xs"
+                            >
+                              <Share2 className="w-3 h-3 mr-1" />
+                              Compartir
+                            </Button>
+                          )}
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={(e) => handleEventClick(event, e)}
+                            className="h-6 px-2 text-xs"
+                          >
+                            Editar
+                          </Button>
                         </div>
                       </div>
                     ))}
@@ -524,6 +564,33 @@ export default function EmployeeCalendar() {
                 </div>
               </div>
             </form>
+          </DialogContent>
+        </Dialog>
+
+        {/* Share Event Dialog */}
+        <Dialog open={shareDialogOpen} onOpenChange={setShareDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Compartir Evento</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <p>
+                ¿Estás seguro de que quieres compartir el evento "{selectedEvent?.title}" 
+                con todos los usuarios?
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Una vez compartido, todos los usuarios podrán verlo y comentarlo, 
+                pero solo tú podrás modificarlo o eliminarlo.
+              </p>
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setShareDialogOpen(false)}>
+                  Cancelar
+                </Button>
+                <Button onClick={confirmShareEvent}>
+                  Compartir Evento
+                </Button>
+              </div>
+            </div>
           </DialogContent>
         </Dialog>
       </div>
