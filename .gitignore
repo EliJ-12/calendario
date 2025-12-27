@@ -9,3 +9,4 @@ vite.config.ts.*
 coverage/
 npm-debug.log*
 yarn-error.log*
+.vercel
