@@ -26,6 +26,7 @@ export function useCalendarEvents(startDate?: string, endDate?: string) {
   const eventsQuery = useQuery<CalendarEvent[]>({
     queryKey: ["/api/calendar/events", startDate, endDate],
     queryFn: async () => {
+      console.log('Fetching events with params:', { startDate, endDate });
       const params = new URLSearchParams();
       if (startDate) params.append("startDate", startDate);
       if (endDate) params.append("endDate", endDate);
@@ -34,11 +35,16 @@ export function useCalendarEvents(startDate?: string, endDate?: string) {
         credentials: "include"
       });
       
+      console.log('Events response status:', response.status);
+      
       if (!response.ok) {
+        console.error('Failed to fetch events:', response.statusText);
         throw new Error("Failed to fetch calendar events");
       }
       
-      return response.json();
+      const data = await response.json();
+      console.log('Events data received:', data);
+      return data;
     }
   });
 

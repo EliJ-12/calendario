@@ -76,12 +76,17 @@ export default function EmployeeCalendar() {
     format(displayInterval.end, 'yyyy-MM-dd')
   );
 
+  console.log('Total events loaded:', events.length);
+  console.log('Events:', events);
+
   const calendarDays = view === "month" 
     ? eachDayOfInterval({ start: calendarStart, end: calendarEnd })
     : eachDayOfInterval({ start: yearStart, end: yearEnd });
 
   const getEventsForDate = (date: Date) => {
-    return events.filter(event => isSameDay(parseISO(event.date), date));
+    const dayEvents = events.filter(event => isSameDay(parseISO(event.date), date));
+    console.log('Events for date', format(date, 'yyyy-MM-dd'), ':', dayEvents);
+    return dayEvents;
   };
 
   const handleDateClick = (date: Date) => {
