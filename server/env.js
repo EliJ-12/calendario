@@ -1,23 +1,15 @@
-// server/env.js - Load environment variables for Vercel
-import dotenv from 'dotenv';
+// server/env.js
+// Environment variables configuration
+import { config } from 'dotenv';
 
-// Load environment variables from .env files
-dotenv.config({ path: '.env.local' });
-dotenv.config({ path: '.env.production' });
+// Load environment variables
+config({ path: '.env' });
 
-// Ensure all required environment variables are set
-const requiredEnvVars = [
-  'DATABASE_URL',
-  'SUPABASE_URL', 
-  'SUPABASE_ANON_KEY',
-  'SESSION_SECRET'
-];
-
-for (const envVar of requiredEnvVars) {
-  if (!process.env[envVar]) {
-    console.error(`Missing required environment variable: ${envVar}`);
-    process.exit(1);
-  }
-}
-
-export default {};
+export const env = {
+  NODE_ENV: process.env.NODE_ENV || 'development',
+  PORT: process.env.PORT || 3000,
+  DATABASE_URL: process.env.DATABASE_URL,
+  SUPABASE_URL: process.env.SUPABASE_URL,
+  SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY,
+  SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
+};
