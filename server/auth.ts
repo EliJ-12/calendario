@@ -31,6 +31,19 @@ export function setupAuth(app: Express) {
       destroy: (sid: any, callback: any) => {
         sessionStore.delete(sid);
         callback(null);
+      },
+      regenerate: (req: any, callback: any) => {
+        const oldSid = req.sessionID;
+        const newSid = req.sessionID = Math.random().toString(36).substring(2, 15);
+        
+        // Copy session data
+        const sessionData = sessionStore.get(oldSid);
+        if (sessionData) {
+          sessionStore.set(newSid, sessionData);
+          sessionStore.delete(oldSid);
+        }
+        
+        callback(null, newSid);
       }
     }),
     secret: process.env.SESSION_SECRET || "your-secret-key",
