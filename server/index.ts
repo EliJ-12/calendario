@@ -1,3 +1,6 @@
+import dotenv from 'dotenv';
+dotenv.config({ path: '.env.local' });
+
 import { serveStatic } from "./static.js";
 import { createApp } from "./app.js";
 
