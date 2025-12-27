@@ -15,37 +15,7 @@ async function comparePasswords(supplied: string, stored: string) {
 }
 
 export function setupAuth(app: Express) {
-  // Simple memory session store for Vercel
-  const sessionStore = new Map();
-  
   app.use(session({
-    store: new (session.Store as any)({
-      get: (sid: any, callback: any) => {
-        const sessionData = sessionStore.get(sid);
-        callback(null, sessionData || null);
-      },
-      set: (sid: any, session: any, callback: any) => {
-        sessionStore.set(sid, session);
-        callback(null);
-      },
-      destroy: (sid: any, callback: any) => {
-        sessionStore.delete(sid);
-        callback(null);
-      },
-      regenerate: (req: any, callback: any) => {
-        const oldSid = req.sessionID;
-        const newSid = req.sessionID = Math.random().toString(36).substring(2, 15);
-        
-        // Copy session data
-        const sessionData = sessionStore.get(oldSid);
-        if (sessionData) {
-          sessionStore.set(newSid, sessionData);
-          sessionStore.delete(oldSid);
-        }
-        
-        callback(null, newSid);
-      }
-    }),
     secret: process.env.SESSION_SECRET || "your-secret-key",
     resave: false,
     saveUninitialized: false,
