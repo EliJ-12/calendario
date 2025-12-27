@@ -33,7 +33,7 @@ export const calendarEvents = pgTable("calendar_events", {
   date: date("date").notNull(),
   time: text("time"), // HH:mm format
   category: text("category", { enum: ["examen", "entrega", "presentacion", "evento_trabajo", "evento_universidad"] }).notNull(),
-  color: text("color").notNull().default("#3B82F6"), // Default blue color
+  color: text("color").notNull().default("#FF3E40"), // Default red color
   isShared: boolean("is_shared").default(false), // For shared calendar
   sharedBy: integer("shared_by").references(() => users.id), // Who shared the event
   createdAt: timestamp("created_at").defaultNow(),

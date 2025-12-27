@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS calendar_events (
   date DATE NOT NULL,
   time TIME,
   category VARCHAR(30) NOT NULL CHECK (category IN ('examen', 'entrega', 'presentacion', 'evento_trabajo', 'evento_universidad')),
-  color VARCHAR(7) DEFAULT '#3B82F6', -- Default blue color in hex format
+  color VARCHAR(7) DEFAULT '#FF3E40', -- Default red color in hex format
   is_shared BOOLEAN DEFAULT FALSE, -- For shared calendar
   shared_by INTEGER REFERENCES users(id), -- Who shared the event
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -66,11 +66,64 @@ $$ language 'plpgsql';
 CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_calendar_events_updated_at BEFORE UPDATE ON calendar_events FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+-- Row Level Security (RLS) for users
+ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+
 -- Row Level Security (RLS) for calendar_events
 ALTER TABLE calendar_events ENABLE ROW LEVEL SECURITY;
 
 -- Row Level Security (RLS) for event_comments
 ALTER TABLE event_comments ENABLE ROW LEVEL SECURITY;
+
+-- Users Table Policies
+
+-- Policy: Users can view their own profile
+CREATE POLICY "Users can view own profile" ON users
+    FOR SELECT USING (auth.uid()::text = id::text);
+
+-- Policy: Admins can view all users
+CREATE POLICY "Admins can view all users" ON users
+    FOR SELECT USING (
+        EXISTS (
+            SELECT 1 FROM users 
+            WHERE id = auth.uid()::text::integer 
+            AND role = 'admin'
+        )
+    );
+
+-- Policy: Users can update their own profile
+CREATE POLICY "Users can update own profile" ON users
+    FOR UPDATE USING (auth.uid()::text = id::text);
+
+-- Policy: Admins can update all users
+CREATE POLICY "Admins can update all users" ON users
+    FOR UPDATE USING (
+        EXISTS (
+            SELECT 1 FROM users 
+            WHERE id = auth.uid()::text::integer 
+            AND role = 'admin'
+        )
+    );
+
+-- Policy: Admins can insert users
+CREATE POLICY "Admins can insert users" ON users
+    FOR INSERT WITH CHECK (
+        EXISTS (
+            SELECT 1 FROM users 
+            WHERE id = auth.uid()::text::integer 
+            AND role = 'admin'
+        )
+    );
+
+-- Policy: Admins can delete users
+CREATE POLICY "Admins can delete users" ON users
+    FOR DELETE USING (
+        EXISTS (
+            SELECT 1 FROM users 
+            WHERE id = auth.uid()::text::integer 
+            AND role = 'admin'
+        )
+    );
 
 -- Calendar Events Policies
 
