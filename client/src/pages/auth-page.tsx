@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { Briefcase, Loader2 } from "lucide-react";
+import { Calendar, Loader2 } from "lucide-react";
 
 export default function AuthPage() {
   const [username, setUsername] = useState("");
@@ -27,7 +27,7 @@ export default function AuthPage() {
       <Card className="w-full max-w-md border-border/50 shadow-xl">
         <CardHeader className="space-y-1 text-center pb-8">
           <div className="mx-auto w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center mb-4">
-            <Briefcase className="w-6 h-6 text-primary" />
+            <Calendar className="w-6 h-6 text-primary" />
           </div>
           <CardTitle className="text-2xl font-bold">Bienvenido</CardTitle>
           <CardDescription>
