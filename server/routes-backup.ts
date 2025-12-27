@@ -157,6 +157,202 @@ export async function registerRoutes(
   });
 
   // === CALENDAR EVENTS ROUTES ===
+  app.get(api.workLogs.list.path, async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
+    
+    // Admins see all or filter. Employees see only theirs.
+    const user = req.user as any;
+    let userId = user.id;
+    
+    if (user.role === 'admin') {
+      // If admin passed a userId query param, use it. Otherwise get all.
+      if (req.query.userId) {
+        userId = Number(req.query.userId);
+      } else {
+        userId = undefined; // Get all
+      }
+    }
+
+    const logs = await storage.getWorkLogs(
+      userId,
+      req.query.startDate as string,
+      req.query.endDate as string
+    );
+    res.json(logs);
+  });
+
+  app.post(api.workLogs.create.path, async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
+    
+    try {
+      const input = insertWorkLogSchema.parse(req.body);
+      
+      // Check for duplicate work log on same date for same user and type
+      const existingLogs = await storage.getWorkLogs(input.userId, input.date, input.date);
+      const duplicate = existingLogs.find(log => 
+        log.date === input.date && 
+        log.type === input.type &&
+        log.userId === input.userId
+      );
+      
+      if (duplicate) {
+        return res.status(409).json({ 
+          message: `Ya existe un registro de ${input.type === 'work' ? 'trabajo' : 'ausencia'} para esta fecha.` 
+        });
+      }
+      
+      const log = await storage.createWorkLog({
+        ...input,
+        userId: (req.user as any).id // Enforce current user
+      });
+      res.status(201).json(log);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors[0].message });
+      }
+      throw err;
+    }
+  });
+
+  app.patch(api.workLogs.update.path, async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
+    
+    const id = Number(req.params.id);
+    const existing = await storage.getWorkLog(id);
+    if (!existing) return res.status(404).json({ message: "Not found" });
+    
+    // Only owner (if pending) or admin can update
+    const user = req.user as any;
+    if (user.role !== 'admin' && existing.userId !== user.id) {
+      return res.status(403).json({ message: "Cannot edit this log" });
+    }
+
+    const updated = await storage.updateWorkLog(id, req.body);
+    res.json(updated);
+  });
+
+  app.delete(api.workLogs.update.path, async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
+    
+    const id = Number(req.params.id);
+    const existing = await storage.getWorkLog(id);
+    if (!existing) return res.status(404).json({ message: "Not found" });
+    
+    const user = req.user as any;
+    if (user.role !== 'admin' && existing.userId !== user.id) {
+      return res.status(403).json({ message: "Cannot delete this log" });
+    }
+
+    await storage.deleteWorkLog(id);
+    res.sendStatus(204);
+  });
+
+  // === Absences ===
+  app.get(api.absences.list.path, async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
+
+    const user = req.user as any;
+    let userId = user.id;
+
+    if (user.role === 'admin') {
+      if (req.query.userId) {
+         userId = Number(req.query.userId);
+      } else {
+        userId = undefined;
+      }
+    }
+
+    const list = await storage.getAbsences(userId, req.query.status as string);
+    res.json(list);
+  });
+
+  app.post(api.absences.create.path, async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
+
+    try {
+      const input = insertAbsenceSchema.parse(req.body);
+      
+      // Check for overlapping absence requests
+      const existingAbsences = await storage.getAbsences(input.userId);
+      const overlap = existingAbsences.find(absence => {
+        const existingStart = new Date(absence.startDate);
+        const existingEnd = new Date(absence.endDate);
+        const newStart = new Date(input.startDate);
+        const newEnd = new Date(input.endDate);
+        
+        return (
+          (newStart >= existingStart && newStart <= existingEnd) ||
+          (newEnd >= existingStart && newEnd <= existingEnd) ||
+          (newStart <= existingStart && newEnd >= existingEnd)
+        );
+      });
+      
+      if (overlap) {
+        return res.status(409).json({ 
+          message: "Ya existe una solicitud de ausencia para este período." 
+        });
+      }
+      
+      const absence = await storage.createAbsence({
+        ...input,
+        userId: (req.user as any).id
+      });
+      res.status(201).json(absence);
+    } catch (err) {
+       if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors[0].message });
+      }
+      throw err;
+    }
+  });
+
+  app.patch(api.absences.updateStatus.path, async (req, res) => {
+    if (!req.isAuthenticated() || (req.user as any).role !== 'admin') {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    
+    const id = Number(req.params.id);
+    const updated = await storage.updateAbsenceStatus(id, req.body.status);
+    res.json(updated);
+  });
+
+  // Allow employees to delete their own absence requests (only if pending)
+  app.delete("/api/absences/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
+    
+    const id = Number(req.params.id);
+    const absence = await storage.getAbsence(id);
+    if (!absence) return res.status(404).json({ message: "Not found" });
+    
+    const user = req.user as any;
+    // Only owner (if pending) or admin can delete
+    if (user.role !== 'admin' && (absence.userId !== user.id || absence.status !== 'pending')) {
+      return res.status(403).json({ message: "Cannot delete this absence request" });
+    }
+
+    await storage.deleteAbsence(id);
+    res.sendStatus(204);
+  });
+
+  // Allow employees to update their own absence requests (only if pending)
+  app.patch("/api/absences/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
+    
+    const id = Number(req.params.id);
+    const absence = await storage.getAbsence(id);
+    if (!absence) return res.status(404).json({ message: "Not found" });
+    
+    const user = req.user as any;
+    // Only owner (if pending) or admin can update
+    if (user.role !== 'admin' && (absence.userId !== user.id || absence.status !== 'pending')) {
+      return res.status(403).json({ message: "Cannot edit this absence request" });
+    }
+
+    const updated = await storage.updateAbsence(id, req.body);
+    res.json(updated);
+  });
+
+  // === CALENDAR EVENTS ROUTES ===
 
   // Get all events for a user (with optional date filtering)
   app.get("/api/calendar/events", async (req, res) => {
@@ -193,36 +389,37 @@ export async function registerRoutes(
     if (!event.length) return res.status(404).json({ message: "Event not found" });
     
     const user = req.user as any;
-    if (event[0].userId !== user.id && !event[0].isShared) {
+    if (event[0].userId !== user.id && user.role !== 'admin') {
       return res.status(403).json({ message: "Access denied" });
     }
     
     res.json(event[0]);
   });
 
-  // Create an event
+  // Create a new event
   app.post("/api/calendar/events", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
     
     try {
       const eventData = insertCalendarEventSchema.parse(req.body);
+      const user = req.user as any;
       
-      // Assign color based on category
+      // Set default colors based on category
       const categoryColors = {
-        examen: "#EF4444",
-        entrega: "#F59E0B", 
-        presentacion: "#8B5CF6",
-        evento_trabajo: "#3B82F6",
-        evento_universidad: "#10B981"
+        examen: "#EF4444",      // red
+        entrega: "#F59E0B",     // amber  
+        presentacion: "#8B5CF6", // purple
+        evento_trabajo: "#3B82F6", // blue
+        evento_universidad: "#10B981" // green
       };
       
-      const finalData = {
+      const eventWithColor = {
         ...eventData,
-        color: categoryColors[eventData.category as keyof typeof categoryColors],
-        userId: (req.user as any).id
+        userId: user.id,
+        color: eventData.color || categoryColors[eventData.category as keyof typeof categoryColors] || "#3B82F6"
       };
       
-      const [event] = await db.insert(calendarEvents).values(finalData).returning();
+      const [event] = await db.insert(calendarEvents).values(eventWithColor).returning();
       res.status(201).json(event);
     } catch (err) {
       if (err instanceof z.ZodError) {
@@ -242,11 +439,12 @@ export async function registerRoutes(
     if (!existingEvent.length) return res.status(404).json({ message: "Event not found" });
     
     const user = req.user as any;
-    if (existingEvent[0].userId !== user.id && existingEvent[0].sharedBy !== user.id) {
+    if (existingEvent[0].userId !== user.id && user.role !== 'admin') {
       return res.status(403).json({ message: "Access denied" });
     }
     
-    const [updated] = await db.update(calendarEvents).set(req.body).where(eq(calendarEvents.id, id)).returning();
+    const updateData = { ...req.body, updatedAt: new Date() };
+    const [updated] = await db.update(calendarEvents).set(updateData).where(eq(calendarEvents.id, id)).returning();
     res.json(updated);
   });
 
@@ -260,7 +458,7 @@ export async function registerRoutes(
     if (!existingEvent.length) return res.status(404).json({ message: "Event not found" });
     
     const user = req.user as any;
-    if (existingEvent[0].userId !== user.id && existingEvent[0].sharedBy !== user.id) {
+    if (existingEvent[0].userId !== user.id && user.role !== 'admin') {
       return res.status(403).json({ message: "Access denied" });
     }
     
