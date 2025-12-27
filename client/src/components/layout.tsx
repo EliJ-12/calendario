@@ -8,7 +8,9 @@ import {
   Briefcase, 
   FileClock,
   Menu,
-  X
+  X,
+  Calendar,
+  Share2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
@@ -24,13 +26,14 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const navItems = isAdmin
     ? [
         { href: "/admin", label: "Panel", icon: LayoutDashboard },
-        { href: "/admin/employees", label: "Empleados", icon: Users },
-        { href: "/admin/absences", label: "Ausencias", icon: CalendarClock },
+        { href: "/admin/users", label: "Usuarios", icon: Users },
+        { href: "/calendar/personal", label: "Mi Calendario", icon: Calendar },
+        { href: "/calendar/shared", label: "Calendario Compartido", icon: Share2 },
       ]
     : [
         { href: "/dashboard", label: "Mi Panel", icon: LayoutDashboard },
-        { href: "/dashboard/history", label: "Mis Horas", icon: FileClock },
-        { href: "/dashboard/absences", label: "Ausencias", icon: CalendarClock },
+        { href: "/calendar/personal", label: "Mi Calendario", icon: Calendar },
+        { href: "/calendar/shared", label: "Calendario Compartido", icon: Share2 },
       ];
 
   const NavContent = () => (

@@ -74,12 +74,18 @@ export default function PersonalCalendar() {
   // Create event mutation
   const createEventMutation = useMutation({
     mutationFn: async (data: EventFormData) => {
+      console.log('Creating event with data:', data);
       const response = await fetch('/api/calendar-events', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
       });
-      if (!response.ok) throw new Error('Failed to create event');
+      console.log('Create event response status:', response.status);
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.log('Create event error:', errorText);
+        throw new Error('Failed to create event: ' + errorText);
+      }
       return response.json();
     },
     onSuccess: () => {
@@ -88,7 +94,8 @@ export default function PersonalCalendar() {
       resetForm();
       toast({ title: "Evento creado exitosamente" });
     },
-    onError: () => {
+    onError: (error) => {
+      console.log('Create event mutation error:', error);
       toast({ title: "Error al crear evento", variant: "destructive" });
     }
   });
