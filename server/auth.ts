@@ -57,6 +57,7 @@ async function comparePasswords(supplied: string, stored: string) {
 export function setupAuth(app: Express) {
   // Simple in-memory session store for Vercel serverless
   const sessions = new Map();
+  const eventListeners = new Map();
   
   app.use(session({
     store: {
@@ -72,7 +73,6 @@ export function setupAuth(app: Express) {
         callback();
       },
       regenerate: (sid: number, callback: (err?: any) => void) => {
-        const newSid = require('crypto').randomBytes(16).toString('hex');
         callback();
       },
       load: (sid: string, callback: (err: any, session?: any) => void) => {
@@ -92,7 +92,6 @@ export function setupAuth(app: Express) {
         callback(null, session);
       },
       touch: (sid: string, session: any, callback: (err?: any) => void) => {
-        // Update expiration time
         if (session.cookie) {
           session.cookie.expires = new Date(Date.now() + 24 * 60 * 60 * 1000);
         }
@@ -111,9 +110,49 @@ export function setupAuth(app: Express) {
       ids: (callback: (err: any, ids?: string[]) => void) => {
         callback(null, Array.from(sessions.keys()));
       },
-      addListener: () => {},
-      removeListener: () => {},
-      listeners: () => []
+      on: (event: string, listener: Function) => {
+        if (!eventListeners.has(event)) {
+          eventListeners.set(event, []);
+        }
+        eventListeners.get(event).push(listener);
+      },
+      emit: (event: string, ...args: any[]) => {
+        const listeners = eventListeners.get(event) || [];
+        listeners.forEach(listener => listener(...args));
+      },
+      addListener: (event: string, listener: Function) => {
+        if (!eventListeners.has(event)) {
+          eventListeners.set(event, []);
+        }
+        eventListeners.get(event).push(listener);
+      },
+      removeListener: (event: string, listener: Function) => {
+        const listeners = eventListeners.get(event) || [];
+        const index = listeners.indexOf(listener);
+        if (index > -1) {
+          listeners.splice(index, 1);
+        }
+      },
+      listeners: (event?: string) => {
+        if (event) {
+          return eventListeners.get(event) || [];
+        }
+        return Array.from(eventListeners.values()).flat();
+      },
+      once: (event: string, listener: Function) => {
+        const onceListener = (...args: any[]) => {
+          listener(...args);
+          const listeners = eventListeners.get(event) || [];
+          const index = listeners.indexOf(onceListener);
+          if (index > -1) {
+            listeners.splice(index, 1);
+          }
+        };
+        if (!eventListeners.has(event)) {
+          eventListeners.set(event, []);
+        }
+        eventListeners.get(event).push(onceListener);
+      }
     } as any,
     secret: process.env.SESSION_SECRET || "your-secret-key-change-in-production",
     resave: false,
