@@ -75,28 +75,39 @@ export default function PersonalCalendar() {
   // Create event mutation
   const createEventMutation = useMutation({
     mutationFn: async (data: EventFormData) => {
-      console.log('Creating event with data:', data);
+      console.log('=== Frontend Event Creation Start ===');
+      console.log('Form data being sent:', data);
+      console.log('Form data keys:', Object.keys(data));
+      console.log('Form data values:', Object.values(data));
+      
       const response = await fetch('/api/calendar-events', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
       });
-      console.log('Create event response status:', response.status);
+      
+      console.log('Response status:', response.status);
+      console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+      
       if (!response.ok) {
         const errorText = await response.text();
-        console.log('Create event error:', errorText);
+        console.log('Error response text:', errorText);
         throw new Error('Failed to create event: ' + errorText);
       }
-      return response.json();
+      
+      const result = await response.json();
+      console.log('Success response:', result);
+      return result;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log('Mutation success callback:', data);
       queryClient.invalidateQueries({ queryKey: ['/api/calendar-events'] });
       setIsEventDialogOpen(false);
       resetForm();
       toast({ title: "Evento creado exitosamente" });
     },
     onError: (error) => {
-      console.log('Create event mutation error:', error);
+      console.log('Mutation error callback:', error);
       toast({ title: "Error al crear evento", variant: "destructive" });
     }
   });

@@ -202,12 +202,20 @@ export async function registerRoutes(
   });
 
   app.post('/api/calendar-events', async (req, res) => {
-    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
+    console.log('=== Calendar Event Creation Start ===');
+    console.log('Is authenticated:', req.isAuthenticated());
+    console.log('User from request:', req.user);
+    
+    if (!req.isAuthenticated()) {
+      console.log('ERROR: User not authenticated');
+      return res.status(401).json({ message: "Unauthorized" });
+    }
     
     try {
       const user = req.user as any;
       console.log('Creating calendar event for user:', user.id);
       console.log('Request body:', req.body);
+      console.log('Request body keys:', Object.keys(req.body || {}));
       
       const eventData = {
         user_id: user.id,
@@ -222,6 +230,7 @@ export async function registerRoutes(
       };
       
       console.log('Processed event data:', eventData);
+      console.log('Event data keys:', Object.keys(eventData));
       
       const { data, error } = await supabase
         .from('calendar_events')
@@ -230,7 +239,12 @@ export async function registerRoutes(
         .single();
       
       if (error) {
-        console.log('Supabase error:', error);
+        console.log('Supabase error details:', {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        });
         return res.status(500).json({ message: error.message });
       }
       
@@ -238,11 +252,11 @@ export async function registerRoutes(
       res.status(201).json(data);
     } catch (err) {
       console.log('Calendar event creation error:', err);
-      if (err instanceof z.ZodError) {
-        return res.status(400).json({ message: err.errors[0].message });
-      }
-      throw err;
+      console.log('Error type:', typeof err);
+      console.log('Error message:', err instanceof Error ? err.message : 'Unknown error');
+      res.status(500).json({ message: "Failed to create event" });
     }
+    console.log('=== Calendar Event Creation End ===');
   });
 
   app.put('/api/calendar-events/:id', async (req, res) => {
