@@ -18,11 +18,7 @@ console.log('DATABASE_URL configured:', connectionString ? 'YES' : 'NO');
 export const pool = new Pool({
   connectionString: connectionString,
   ssl: {
-    rejectUnauthorized: false,
-    // Configuración adicional para certificados autofirmados
-    ca: undefined,
-    cert: undefined,
-    key: undefined
+    rejectUnauthorized: false
   },
   connectionTimeoutMillis: 60_000,
   idleTimeoutMillis: 300_000,
@@ -30,7 +26,9 @@ export const pool = new Pool({
   statement_timeout: 30_000,
   max: 20,
   min: 2,
+  // Additional options for Vercel
   application_name: 'calendario-app',
+  // Retry configuration
   keepAlive: true,
   keepAliveInitialDelayMillis: 10_000,
 });
