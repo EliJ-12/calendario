@@ -8,7 +8,7 @@
   --font-sans: 'Inter', sans-serif;
   --font-display: 'Outfit', sans-serif;
 
-  /* Red Palette - Modern & Energetic */
+  /* Corporate Red Palette - Modern & Energetic */
   --background: 210 40% 98%;
   --foreground: 222 47% 11%;
 
@@ -18,7 +18,7 @@
   --popover: 0 0% 100%;
   --popover-foreground: 222 47% 11%;
 
-  --primary: 354 100% 61%; /* #FF3E40 */
+  --primary: 354 100% 62%; /* #FF3E40 */
   --primary-foreground: 210 40% 98%;
 
   --secondary: 210 40% 96%;
@@ -35,7 +35,7 @@
 
   --border: 214 32% 91%;
   --input: 214 32% 91%;
-  --ring: 354 100% 61%;
+  --ring: 354 100% 62%;
 
   --radius: 0.75rem;
 }
@@ -50,7 +50,7 @@
   --popover: 217 33% 17%;
   --popover-foreground: 210 40% 98%;
 
-  --primary: 354 100% 71%;
+  --primary: 354 91% 60%;
   --primary-foreground: 222 47% 11%;
 
   --secondary: 217 19% 27%;
@@ -67,7 +67,7 @@
 
   --border: 217 19% 27%;
   --input: 217 19% 27%;
-  --ring: 354 100% 71%;
+  --ring: 354 91% 60%;
 }
 
 @layer base {

@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { Calendar, Loader2 } from "lucide-react";
+import { Briefcase, Loader2, Calendar } from "lucide-react";
 
 export default function AuthPage() {
   const [username, setUsername] = useState("");
@@ -21,7 +21,7 @@ export default function AuthPage() {
       {/* Background decoration */}
       <div className="fixed inset-0 -z-10 overflow-hidden">
         <div className="absolute -top-[30%] -right-[10%] w-[70%] h-[70%] rounded-full bg-primary/5 blur-3xl" />
-        <div className="absolute -bottom-[30%] -left-[10%] w-[70%] h-[70%] rounded-full bg-red-400/5 blur-3xl" />
+        <div className="absolute -bottom-[30%] -left-[10%] w-[70%] h-[70%] rounded-full bg-[#FF3E40]/5 blur-3xl" />
       </div>
 
       <Card className="w-full max-w-md border-border/50 shadow-xl">
