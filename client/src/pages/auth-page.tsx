@@ -21,7 +21,7 @@ export default function AuthPage() {
       {/* Background decoration */}
       <div className="fixed inset-0 -z-10 overflow-hidden">
         <div className="absolute -top-[30%] -right-[10%] w-[70%] h-[70%] rounded-full bg-primary/5 blur-3xl" />
-        <div className="absolute -bottom-[30%] -left-[10%] w-[70%] h-[70%] rounded-full bg-red-400/5 blur-3xl" />
+        <div className="absolute -bottom-[30%] -left-[10%] w-[70%] h-[70%] rounded-full bg-blue-400/5 blur-3xl" />
       </div>
 
       <Card className="w-full max-w-md border-border/50 shadow-xl">
