@@ -1,7 +1,13 @@
 // server/vercel.js
 import './env.js';
-import app from './index.js';
+import { createApp } from './app.js';
 
-export default async (req, res) => {
-  return app(req, res);
-};
+let appInstance;
+
+export default async function handler(req, res) {
+  if (!appInstance) {
+    const { app } = await createApp();
+    appInstance = app;
+  }
+  return appInstance(req, res);
+}
