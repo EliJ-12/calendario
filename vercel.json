@@ -5,9 +5,16 @@
       "src": "server/vercel.js",
       "use": "@vercel/node",
       "config": {
-        "includeFiles": ["server/**/*.js", "server/**/*.ts", "shared/**/*.ts", ".env*"],
+        "includeFiles": ["server/**/*.js","server/**/*.ts", "shared/**/*.ts", ".env*"],
         "maxDuration": 30,
         "runtime": "nodejs18.x"
+      }
+    },
+    {
+      "src": "package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "dist/public"
       }
     }
   ],
@@ -15,6 +22,9 @@
     {
       "src": "/api/(.*)",
       "dest": "/server/vercel.js"
+    },
+    {
+      "handle": "filesystem"
     },
     {
       "src": "/(.*)",
