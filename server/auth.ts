@@ -70,6 +70,20 @@ export function setupAuth(app: Express) {
       destroy: (sid: any, callback: any) => {
         sessionStore.delete(sid);
         callback(null);
+      },
+      regenerate: (req: any, callback: any) => {
+        // Generate new session ID and copy data
+        const oldSid = req.sessionID;
+        const newSid = randomBytes(16).toString('hex');
+        const sessionData = sessionStore.get(oldSid);
+        
+        if (sessionData) {
+          sessionStore.set(newSid, sessionData);
+          sessionStore.delete(oldSid);
+          req.sessionID = newSid;
+        }
+        
+        callback(null, newSid);
       }
     }),
     secret: process.env.SESSION_SECRET || "your-secret-key",
