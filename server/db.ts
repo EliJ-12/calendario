@@ -12,30 +12,38 @@ if (!process.env.DATABASE_URL) {
 
 const connectionString = process.env.DATABASE_URL;
 
-// Some drivers/layers parse `sslmode=require` from the URL and enable TLS with
-// certificate verification by default, which can fail on serverless platforms
-// with `SELF_SIGNED_CERT_IN_CHAIN`. We strip `sslmode` and control TLS via the
-// explicit `ssl` option below.
-let sanitizedConnectionString = connectionString;
-try {
-  const url = new URL(connectionString);
-  url.searchParams.delete("sslmode");
-  sanitizedConnectionString = url.toString();
-} catch {
-  // If DATABASE_URL isn't a valid URL for Node's URL parser, leave it as-is.
-}
+console.log('DATABASE_URL configured:', connectionString ? 'YES' : 'NO');
 
-// Supabase requires SSL in most environments (including Vercel).
-// Using sslmode=require in the URL usually works, but explicitly enabling SSL
-// avoids resolution differences between runtimes.
-const shouldUseSsl = process.env.NODE_ENV === "production";
-
+// Enhanced pool configuration for Vercel + Supabase
 export const pool = new Pool({
-  connectionString: sanitizedConnectionString,
-  ssl: shouldUseSsl ? { rejectUnauthorized: false } : undefined,
+  connectionString: connectionString,
+  ssl: {
+    rejectUnauthorized: false
+  },
   connectionTimeoutMillis: 60_000,
   idleTimeoutMillis: 300_000,
+  query_timeout: 30_000,
+  statement_timeout: 30_000,
   max: 20,
   min: 2,
+  // Additional options for Vercel
+  application_name: 'calendario-app',
+  // Retry configuration
+  keepAlive: true,
+  keepAliveInitialDelayMillis: 10_000,
 });
+
 export const db = drizzle(pool, { schema });
+
+// Log connection status
+pool.on('connect', () => {
+  console.log('Connected to PostgreSQL database');
+});
+
+pool.on('error', (err) => {
+  console.error('PostgreSQL pool error:', err);
+});
+
+pool.on('remove', () => {
+  console.log('PostgreSQL client removed from pool');
+});
