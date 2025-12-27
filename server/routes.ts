@@ -212,7 +212,7 @@ export async function registerRoutes(
         examen: "#EF4444",
         entrega: "#F59E0B", 
         presentacion: "#8B5CF6",
-        evento_trabajo: "#3B82F6",
+        evento_trabajo: "#FF3E40",
         evento_universidad: "#10B981"
       };
       

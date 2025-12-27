@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { CalendarEvent, InsertCalendarEvent } from "../../../../shared/schema";
+import { CalendarEvent, InsertCalendarEvent } from "../../../shared/schema";
 import { apiRequest } from "../lib/queryClient";
 
 // Category colors
@@ -7,7 +7,7 @@ export const CATEGORY_COLORS = {
   examen: "#EF4444",      // red
   entrega: "#F59E0B",     // amber  
   presentacion: "#8B5CF6", // purple
-  evento_trabajo: "#3B82F6", // blue
+  evento_trabajo: "#FF3E40", // red
   evento_universidad: "#10B981" // green
 } as const;
 

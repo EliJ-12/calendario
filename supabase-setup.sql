@@ -51,7 +51,7 @@ CREATE INDEX IF NOT EXISTS idx_event_comments_user_id ON event_comments(user_id)
 -- Insert default admin user (password: chen2002)
 -- Hash generated with bcrypt: chen2002
 INSERT INTO users (username, password, full_name, role) 
-VALUES ('admin', '$2b$10$F5e.JabTjLNQ4MwgEp6PNOl8EtTjQ7OLgZ1yD1XUA0nzq/vTghF8W', 'Administrador', 'admin')
+VALUES ('admin', '$2b$10$km/66hvLGpG8zBXmjI4Oc.sfevg/BMRVWLXVS7ltGl2EMx1RgWsgu', 'Administrador', 'admin')
 ON CONFLICT (username) DO NOTHING;
 
 -- Update trigger for updated_at
