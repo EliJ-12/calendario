@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { insertUserSchema, insertCalendarEventSchema, insertEventCommentSchema, users, calendarEvents, eventComments } from './schema.js';
+import { insertUserSchema, insertWorkLogSchema, insertAbsenceSchema, users, workLogs, absences } from './schema.js';
 
 export const errorSchemas = {
   validation: z.object({
@@ -66,76 +66,65 @@ export const api = {
       },
     },
   },
-  calendarEvents: {
+  workLogs: {
     list: {
       method: 'GET' as const,
-      path: '/api/calendar/events',
+      path: '/api/work-logs',
       input: z.object({
+        userId: z.coerce.number().optional(),
         startDate: z.string().optional(),
         endDate: z.string().optional(),
       }).optional(),
       responses: {
-        200: z.array(z.custom<typeof calendarEvents.$inferSelect & { user?: typeof users.$inferSelect }>()),
+        200: z.array(z.custom<typeof workLogs.$inferSelect & { user?: typeof users.$inferSelect }>()),
       },
     },
     create: {
       method: 'POST' as const,
-      path: '/api/calendar/events',
-      input: insertCalendarEventSchema,
+      path: '/api/work-logs',
+      input: insertWorkLogSchema,
       responses: {
-        201: z.custom<typeof calendarEvents.$inferSelect>(),
+        201: z.custom<typeof workLogs.$inferSelect>(),
         400: errorSchemas.validation,
       },
     },
     update: {
       method: 'PATCH' as const,
-      path: '/api/calendar/events/:id',
-      input: insertCalendarEventSchema.partial(),
+      path: '/api/work-logs/:id',
+      input: insertWorkLogSchema.partial(),
       responses: {
-        200: z.custom<typeof calendarEvents.$inferSelect>(),
-        404: errorSchemas.notFound,
-      },
-    },
-    delete: {
-      method: 'DELETE' as const,
-      path: '/api/calendar/events/:id',
-      responses: {
-        204: z.void(),
+        200: z.custom<typeof workLogs.$inferSelect>(),
         404: errorSchemas.notFound,
       },
     },
   },
-  eventComments: {
+  absences: {
     list: {
       method: 'GET' as const,
-      path: '/api/calendar/events/:eventId/comments',
+      path: '/api/absences',
+      input: z.object({
+        userId: z.coerce.number().optional(),
+        status: z.enum(['pending', 'approved', 'rejected']).optional(),
+      }).optional(),
       responses: {
-        200: z.array(z.custom<typeof eventComments.$inferSelect & { user?: typeof users.$inferSelect }>()),
+        200: z.array(z.custom<typeof absences.$inferSelect & { user?: typeof users.$inferSelect }>()),
       },
     },
     create: {
       method: 'POST' as const,
-      path: '/api/calendar/events/:eventId/comments',
-      input: insertEventCommentSchema,
+      path: '/api/absences',
+      input: insertAbsenceSchema,
       responses: {
-        201: z.custom<typeof eventComments.$inferSelect>(),
+        201: z.custom<typeof absences.$inferSelect>(),
         400: errorSchemas.validation,
       },
     },
-    update: {
+    updateStatus: {
       method: 'PATCH' as const,
-      path: '/api/calendar/events/:eventId/comments/:id',
-      input: insertEventCommentSchema.partial(),
+      path: '/api/absences/:id/status',
+      input: z.object({ status: z.enum(['approved', 'rejected']) }),
       responses: {
-        200: z.custom<typeof eventComments.$inferSelect>(),
-        404: errorSchemas.notFound,
-      },
-    },
-    delete: {
-      method: 'DELETE' as const,
-      path: '/api/calendar/events/:eventId/comments/:id',
-      responses: {
-        204: z.void(),
+        200: z.custom<typeof absences.$inferSelect>(),
         404: errorSchemas.notFound,
       },
     },

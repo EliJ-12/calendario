@@ -1,14 +1,6 @@
 import { useAuth } from "@/hooks/use-auth";
 import { Link, useLocation } from "wouter";
-import { 
-  LogOut, 
-  LayoutDashboard, 
-  Calendar, 
-  Users, 
-  Share2,
-  Menu,
-  X
-} from "lucide-react";
+import { ChevronDown, LayoutDashboard, Users, FileClock, CalendarClock, Calendar as CalendarIcon, Menu, X, LogOut } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -24,18 +16,21 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     ? [
         { href: "/admin", label: "Panel", icon: LayoutDashboard },
         { href: "/admin/employees", label: "Empleados", icon: Users },
-        { href: "/shared", label: "Compartido", icon: Share2 },
+        { href: "/admin/absences", label: "Ausencias", icon: CalendarClock },
+        { href: "/calendar", label: "Calendario", icon: CalendarIcon },
       ]
     : [
-        { href: "/dashboard", label: "Mi Calendario", icon: Calendar },
-        { href: "/shared", label: "Compartido", icon: Share2 },
+        { href: "/dashboard", label: "Mi Panel", icon: LayoutDashboard },
+        { href: "/dashboard/history", label: "Mis Horas", icon: FileClock },
+        { href: "/dashboard/absences", label: "Ausencias", icon: CalendarClock },
+        { href: "/calendar", label: "Calendario", icon: CalendarIcon },
       ];
 
   const NavContent = () => (
     <div className="flex flex-col h-full">
       <div className="p-6 border-b border-border/50">
         <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-red-600">
-          Calendario
+          Control Horario
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
           {isAdmin ? "Portal Administrador" : "Portal Empleado"}

@@ -2,20 +2,51 @@ import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
 import { Express } from "express";
 import session from "express-session";
-import bcrypt from "bcrypt";
+import { scrypt, randomBytes, timingSafeEqual } from "crypto";
+import { promisify } from "util";
 import { storage } from "./storage.js";
 import { User } from "../shared/schema.js";
 
+const scryptAsync = promisify(scrypt);
+
+async function hashPassword(password: string) {
+  const salt = randomBytes(16).toString("hex");
+  const buf = (await scryptAsync(password, salt, 64)) as Buffer;
+  return `${buf.toString("hex")}.${salt}`;
+}
+
 async function comparePasswords(supplied: string, stored: string) {
+  const [hashed, salt] = (stored || "").split(".");
+  if (!hashed || !salt) return false;
+
   try {
-    return await bcrypt.compare(supplied, stored);
+    const hashedBuf = Buffer.from(hashed, "hex");
+    const suppliedBuf = (await scryptAsync(supplied, salt, 64)) as Buffer;
+    return timingSafeEqual(hashedBuf, suppliedBuf);
   } catch {
     return false;
   }
 }
 
 export function setupAuth(app: Express) {
+  // Simple memory session store for Vercel
+  const sessionStore = new Map();
+  
   app.use(session({
+    store: new (session.Store as any)({
+      get: (sid: any, callback: any) => {
+        const sessionData = sessionStore.get(sid);
+        callback(null, sessionData || null);
+      },
+      set: (sid: any, session: any, callback: any) => {
+        sessionStore.set(sid, session);
+        callback(null);
+      },
+      destroy: (sid: any, callback: any) => {
+        sessionStore.delete(sid);
+        callback(null);
+      }
+    }),
     secret: process.env.SESSION_SECRET || "your-secret-key",
     resave: false,
     saveUninitialized: false,
@@ -78,5 +109,5 @@ export function setupAuth(app: Express) {
   });
 
   // Helper to register new users (Admin creates them)
-  return { hashPassword: async (password: string) => bcrypt.hash(password, 10) };
+  return { hashPassword };
 }

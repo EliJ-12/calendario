@@ -8,10 +8,13 @@ import { Loader2 } from "lucide-react";
 
 // Pages
 import AuthPage from "@/pages/auth-page";
-import EmployeeCalendar from "@/pages/employee/calendar";
-import AdminCalendar from "@/pages/admin/calendar";
+import EmployeeDashboard from "@/pages/employee/dashboard";
+import EmployeeAbsences from "@/pages/employee/absences";
+import EmployeeWorkHistory from "@/pages/employee/history";
+import AdminDashboard from "@/pages/admin/dashboard";
 import AdminEmployees from "@/pages/admin/employees";
-import SharedCalendar from "@/pages/shared-calendar";
+import AdminAbsences from "@/pages/admin/absences";
+import CalendarPage from "@/pages/calendar-page";
 
 // Protected Route Component
 function ProtectedRoute({ 
@@ -49,18 +52,33 @@ function Router() {
       
       {/* Employee Routes */}
       <Route path="/dashboard">
-        <ProtectedRoute component={EmployeeCalendar} allowedRoles={['employee']} />
+        <ProtectedRoute component={EmployeeDashboard} allowedRoles={['employee']} />
       </Route>
-      <Route path="/shared">
-        <ProtectedRoute component={SharedCalendar} allowedRoles={['employee', 'admin']} />
+      <Route path="/dashboard/history">
+        <ProtectedRoute component={EmployeeWorkHistory} allowedRoles={['employee']} />
+      </Route>
+      <Route path="/dashboard/absences">
+        <ProtectedRoute component={EmployeeAbsences} allowedRoles={['employee']} />
       </Route>
 
       {/* Admin Routes */}
       <Route path="/admin">
-        <ProtectedRoute component={AdminCalendar} allowedRoles={['admin']} />
+        <ProtectedRoute component={AdminDashboard} allowedRoles={['admin']} />
       </Route>
       <Route path="/admin/employees">
         <ProtectedRoute component={AdminEmployees} allowedRoles={['admin']} />
+      </Route>
+      <Route path="/admin/work-logs">
+        {/* Reuse dashboard stats or create separate table page */}
+        <ProtectedRoute component={AdminDashboard} allowedRoles={['admin']} />
+      </Route>
+      <Route path="/admin/absences">
+        <ProtectedRoute component={AdminAbsences} allowedRoles={['admin']} />
+      </Route>
+
+      {/* Calendar Routes - Available to both admin and employee */}
+      <Route path="/calendar">
+        <ProtectedRoute component={CalendarPage} allowedRoles={['admin', 'employee']} />
       </Route>
 
       {/* Redirect root based on auth is handled in login, but fallback: */}
