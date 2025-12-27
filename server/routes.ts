@@ -301,12 +301,13 @@ export async function registerRoutes(
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
     
     const { data, error } = await supabase
-      .from('shared_events')
+      .from('calendar_events')
       .select(`
         *,
-        sharedBy:users(id, username, full_name),
+        user:users(id, username, full_name),
         comments:event_comments(*, user:users(id, username))
       `)
+      .eq('is_shared', true)
       .order('date', { ascending: true });
     
     if (error) return res.status(500).json({ message: error.message });
@@ -324,35 +325,29 @@ export async function registerRoutes(
         return res.status(400).json({ message: "Original event ID is required" });
       }
       
-      // Get the original event
-      const { data: original, error: fetchError } = await supabase
+      console.log('Sharing event:', originalEventId, 'for user:', user.id);
+      
+      // Update the original event to mark it as shared
+      const { data, error } = await supabase
         .from('calendar_events')
-        .select('*')
+        .update({ 
+          is_shared: true, 
+          shared_by: user.id 
+        })
         .eq('id', originalEventId)
         .eq('user_id', user.id)
-        .single();
-      
-      if (fetchError || !original) return res.status(404).json({ message: "Original event not found" });
-      
-      const sharedEventData = {
-        original_event_id: originalEventId,
-        shared_by: user.id,
-        title: original.title,
-        description: original.description,
-        category: original.category,
-        date: original.date,
-        time: original.time
-      };
-      
-      const { data, error } = await supabase
-        .from('shared_events')
-        .insert(sharedEventData)
         .select()
         .single();
       
-      if (error) return res.status(500).json({ message: error.message });
-      res.status(201).json(data);
+      if (error) {
+        console.log('Error sharing event:', error);
+        return res.status(500).json({ message: error.message });
+      }
+      
+      console.log('Event shared successfully:', data);
+      res.status(200).json(data);
     } catch (err) {
+      console.log('Share event error:', err);
       if (err instanceof z.ZodError) {
         return res.status(400).json({ message: err.errors[0].message });
       }

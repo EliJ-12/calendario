@@ -34,10 +34,10 @@ interface SharedEvent {
   category: EventCategory;
   date: string;
   time: string | null;
-  sharedBy: {
+  user: {
     id: number;
     username: string;
-    fullName: string;
+    full_name: string;
   };
   comments: EventComment[];
 }
@@ -263,7 +263,7 @@ export default function SharedCalendar() {
                                   {event.time && ` • ${event.time}`}
                                 </div>
                                 <div className="text-xs text-gray-500 ml-4">
-                                  Compartido por {event.sharedBy.fullName}
+                                  Compartido por {event.user.full_name}
                                 </div>
                                 {event.description && (
                                   <div className="text-xs text-gray-500 ml-4">{event.description}</div>
@@ -277,7 +277,7 @@ export default function SharedCalendar() {
                                   >
                                     <MessageCircle className="h-3 w-3" />
                                   </Button>
-                                  {user?.id === event.sharedBy.id && (
+                                  {user?.id === event.user.id && (
                                     <Button
                                       size="sm"
                                       variant="ghost"
@@ -333,7 +333,7 @@ export default function SharedCalendar() {
                           </div>
                           <div className="flex items-center gap-2 text-sm text-gray-600 mb-1">
                             <User className="h-3 w-3" />
-                            <span>{event.sharedBy.fullName}</span>
+                            <span>{event.user.full_name}</span>
                             {event.time && (
                               <>
                                 <Clock className="h-3 w-3" />
@@ -357,7 +357,7 @@ export default function SharedCalendar() {
                           >
                             <MessageCircle className="h-4 w-4" />
                           </Button>
-                          {user?.id === event.sharedBy.id && (
+                          {user?.id === event.user.id && (
                             <Button
                               size="sm"
                               variant="outline"
@@ -403,7 +403,7 @@ export default function SharedCalendar() {
                   <div className="text-sm text-gray-600">
                     <div className="flex items-center gap-2 mb-1">
                       <User className="h-3 w-3" />
-                      <span>Compartido por {selectedEvent.sharedBy.fullName}</span>
+                      <span>Compartido por {selectedEvent.user.full_name}</span>
                     </div>
                     {selectedEvent.time && (
                       <div className="flex items-center gap-2">
