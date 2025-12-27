@@ -4,6 +4,7 @@ import { Express } from "express";
 import session from "express-session";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
+import bcrypt from "bcrypt";
 import { storage } from "./storage.js";
 import { User } from "../shared/schema.js";
 
@@ -17,6 +18,21 @@ async function hashPassword(password: string) {
 
 async function comparePasswords(supplied: string, stored: string) {
   console.log('Comparing passwords, stored password format:', stored ? stored.substring(0, 20) + '...' : 'null');
+  
+  // Check if it's a bcrypt hash (starts with $2b$, $2a$, etc.)
+  if (stored.startsWith('$2')) {
+    console.log('Detected bcrypt format, using bcrypt comparison');
+    try {
+      const result = await bcrypt.compare(supplied, stored);
+      console.log('Bcrypt comparison result:', result);
+      return result;
+    } catch (err) {
+      console.log('Bcrypt comparison error:', err);
+      return false;
+    }
+  }
+  
+  // Handle custom scrypt format (hash.salt)
   const [hashed, salt] = (stored || "").split(".");
   console.log('Hashed part length:', hashed?.length, 'Salt length:', salt?.length);
   
@@ -29,10 +45,10 @@ async function comparePasswords(supplied: string, stored: string) {
     const hashedBuf = Buffer.from(hashed, "hex");
     const suppliedBuf = (await scryptAsync(supplied, salt, 64)) as Buffer;
     const result = timingSafeEqual(hashedBuf, suppliedBuf);
-    console.log('Password comparison result:', result);
+    console.log('Scrypt comparison result:', result);
     return result;
   } catch (err) {
-    console.log('Password comparison error:', err);
+    console.log('Scrypt comparison error:', err);
     return false;
   }
 }
