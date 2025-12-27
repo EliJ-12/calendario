@@ -97,7 +97,7 @@ export async function registerRoutes(
       
       // Upload to Supabase Storage
       const { data, error } = await supabase.storage
-        .from('absence-files')
+        .from('calendar-files')
         .upload(filePath, req.file.buffer, {
           contentType: req.file.mimetype,
           upsert: false
@@ -110,7 +110,7 @@ export async function registerRoutes(
 
       // Get public URL
       const { data: { publicUrl } } = supabase.storage
-        .from('absence-files')
+        .from('calendar-files')
         .getPublicUrl(filePath);
 
       console.log('Upload successful, public URL:', publicUrl);

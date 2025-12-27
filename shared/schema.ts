@@ -14,17 +14,6 @@ export const users = pgTable("users", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-export const workLogs = pgTable("work_logs", {
-  id: serial("id").primaryKey(),
-  userId: integer("user_id").references(() => users.id).notNull(),
-  date: text("date").notNull(), // YYYY-MM-DD
-  startTime: text("start_time").notNull(), // HH:mm
-  endTime: text("end_time").notNull(), // HH:mm
-  totalHours: integer("total_hours").notNull(), // stored in minutes
-  type: text("type", { enum: ["work", "absence"] }).notNull().default("work"),
-  createdAt: timestamp("created_at").defaultNow(),
-});
-
 export const calendarEvents = pgTable("calendar_events", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").references(() => users.id).notNull(),
@@ -45,19 +34,6 @@ export const eventComments = pgTable("event_comments", {
   eventId: integer("event_id").references(() => calendarEvents.id).notNull(),
   userId: integer("user_id").references(() => users.id).notNull(),
   comment: text("comment").notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
-});
-
-export const absences = pgTable("absences", {
-  id: serial("id").primaryKey(),
-  userId: integer("user_id").references(() => users.id).notNull(),
-  startDate: text("start_date").notNull(),
-  endDate: text("end_date").notNull(),
-  reason: text("reason").notNull(),
-  status: text("status", { enum: ["pending", "approved", "rejected"] }).default("pending"),
-  fileUrl: text("file_url"),
-  isPartial: boolean("is_partial").default(false),
-  partialHours: integer("partial_hours"), // in minutes
   createdAt: timestamp("created_at").defaultNow(),
 });
 
