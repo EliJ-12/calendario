@@ -2,31 +2,9 @@ import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
 import { Express } from "express";
 import session from "express-session";
-import { scrypt, randomBytes, timingSafeEqual } from "crypto";
-import { promisify } from "util";
+import bcrypt from "bcrypt";
 import { storage } from "./storage.js";
 import { User } from "../shared/schema.js";
-
-const scryptAsync = promisify(scrypt);
-
-async function hashPassword(password: string) {
-  const salt = randomBytes(16).toString("hex");
-  const buf = (await scryptAsync(password, salt, 64)) as Buffer;
-  return `${buf.toString("hex")}.${salt}`;
-}
-
-async function comparePasswords(supplied: string, stored: string) {
-  const [hashed, salt] = (stored || "").split(".");
-  if (!hashed || !salt) return false;
-
-  try {
-    const hashedBuf = Buffer.from(hashed, "hex");
-    const suppliedBuf = (await scryptAsync(supplied, salt, 64)) as Buffer;
-    return timingSafeEqual(hashedBuf, suppliedBuf);
-  } catch {
-    return false;
-  }
-}
 
 export function setupAuth(app: Express) {
   // Simple memory session store for Vercel
@@ -67,7 +45,7 @@ export function setupAuth(app: Express) {
         const user = await storage.getUserByUsername(username);
         console.log('User found:', !!user);
         
-        if (!user || !(await comparePasswords(password, user.password))) {
+        if (!user || !(await bcrypt.compare(password, user.password))) {
           console.log('Auth failed');
           return done(null, false);
         } else {
@@ -109,5 +87,5 @@ export function setupAuth(app: Express) {
   });
 
   // Helper to register new users (Admin creates them)
-  return { hashPassword };
+  return { hashPassword: bcrypt.hash };
 }
