@@ -16,14 +16,23 @@ async function hashPassword(password: string) {
 }
 
 async function comparePasswords(supplied: string, stored: string) {
+  console.log('Comparing passwords, stored password format:', stored ? stored.substring(0, 20) + '...' : 'null');
   const [hashed, salt] = (stored || "").split(".");
-  if (!hashed || !salt) return false;
+  console.log('Hashed part length:', hashed?.length, 'Salt length:', salt?.length);
+  
+  if (!hashed || !salt) {
+    console.log('Invalid password format - missing hash or salt');
+    return false;
+  }
 
   try {
     const hashedBuf = Buffer.from(hashed, "hex");
     const suppliedBuf = (await scryptAsync(supplied, salt, 64)) as Buffer;
-    return timingSafeEqual(hashedBuf, suppliedBuf);
-  } catch {
+    const result = timingSafeEqual(hashedBuf, suppliedBuf);
+    console.log('Password comparison result:', result);
+    return result;
+  } catch (err) {
+    console.log('Password comparison error:', err);
     return false;
   }
 }
