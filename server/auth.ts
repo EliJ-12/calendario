@@ -3,6 +3,7 @@ import { Strategy as LocalStrategy } from "passport-local";
 import { Express } from "express";
 import session from "express-session";
 import bcrypt from "bcrypt";
+import { randomBytes } from "crypto";
 import { storage } from "./storage.js";
 import { User } from "../shared/schema.js";
 
@@ -23,6 +24,20 @@ export function setupAuth(app: Express) {
       destroy: (sid: any, callback: any) => {
         sessionStore.delete(sid);
         callback(null);
+      },
+      regenerate: (req: any, callback: any) => {
+        const oldSid = req.sessionID;
+        const newSid = randomBytes(16).toString('hex');
+        
+        // Copy session data
+        const sessionData = sessionStore.get(oldSid);
+        if (sessionData) {
+          sessionStore.set(newSid, sessionData);
+          sessionStore.delete(oldSid);
+        }
+        
+        req.sessionID = newSid;
+        callback(null, newSid);
       }
     }),
     secret: process.env.SESSION_SECRET || "your-secret-key",
