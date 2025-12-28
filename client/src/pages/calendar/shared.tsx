@@ -18,7 +18,7 @@ import { useToast } from "@/hooks/use-toast";
 import Layout from "@/components/layout";
 
 const EVENT_CATEGORIES = [
-  { value: 'Examen', color: '#991B1B', bgColor: '#991B1B10' },
+  { value: 'Examen', color: '#DC2626', bgColor: '#DC262610' },
   { value: 'Entrega', color: '#92400E', bgColor: '#92400E10' },
   { value: 'Presentación', color: '#16A34A', bgColor: '#16A34A10' },
   { value: 'Evento trabajo', color: '#2563EB', bgColor: '#2563EB10' },
@@ -241,7 +241,7 @@ export default function SharedCalendar() {
                               
                               return Object.entries(eventsByCategory).map(([category, data]) => {
                                 const colors = getCategoryColor(category as EventCategory);
-                                const usersList = data.users.map(u => u.full_name || u.username).join(', ');
+                                const usersList = data.users.map(u => (u && (u.full_name || u.username)) || 'Usuario desconocido').join(', ');
                                 return (
                                   <div
                                     key={category}
@@ -274,7 +274,7 @@ export default function SharedCalendar() {
                                     {event.time && ` • ${event.time}`}
                                   </div>
                                   <div className="text-xs text-gray-500 ml-4">
-                                    Compartido por {event.user.full_name}
+                                    Compartido por {event.user?.full_name || event.user?.username || 'Usuario desconocido'}
                                   </div>
                                   <div className="flex gap-1 ml-4">
                                     <Button
@@ -345,7 +345,7 @@ export default function SharedCalendar() {
                               </div>
                             )}
                             <div className="text-sm text-gray-500 mb-2">
-                              Compartido por {event.user.full_name}
+                              Compartido por {event.user?.full_name || event.user?.username || 'Usuario desconocido'}
                             </div>
                             {event.description && (
                               <p className="text-sm text-gray-600 mb-2">{event.description}</p>
@@ -397,7 +397,7 @@ export default function SharedCalendar() {
                       <div className="w-3 h-3 rounded" style={{ backgroundColor: getCategoryColor(selectedEvent.category).color }} />
                       <h4 className="font-medium">{selectedEvent.title}</h4>
                     </div>
-                    <p className="text-sm text-gray-600">Compartido por {selectedEvent.user.full_name}</p>
+                    <p className="text-sm text-gray-600">Compartido por {selectedEvent.user?.full_name || selectedEvent.user?.username || 'Usuario desconocido'}</p>
                   </div>
 
                   {/* Add Comment */}

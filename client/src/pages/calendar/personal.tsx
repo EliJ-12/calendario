@@ -17,7 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 import Layout from "@/components/layout";
 
 const EVENT_CATEGORIES = [
-  { value: 'Examen', color: '#991B1B', bgColor: '#991B1B10' },
+  { value: 'Examen', color: '#DC2626', bgColor: '#DC262610' },
   { value: 'Entrega', color: '#92400E', bgColor: '#92400E10' },
   { value: 'Presentación', color: '#16A34A', bgColor: '#16A34A10' },
   { value: 'Evento trabajo', color: '#2563EB', bgColor: '#2563EB10' },
