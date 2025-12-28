@@ -521,18 +521,67 @@ export async function registerRoutes(
     }
   });
 
+  // Fix user_id for existing events
+  app.post('/api/fix-event-user-ids', async (req, res) => {
+    try {
+      console.log('Fixing user_id for existing events...');
+      
+      // Get all events without user_id
+      const { data: eventsWithoutUserId, error: fetchError } = await supabase
+        .from('calendar_events')
+        .select('*')
+        .is('user_id', null);
+      
+      if (fetchError) {
+        console.log('Error fetching events without user_id:', fetchError);
+        return res.status(500).json({ message: fetchError.message });
+      }
+      
+      console.log('Found events without user_id:', eventsWithoutUserId?.length || 0);
+      
+      // Update each event to assign it to the admin user (id: 1)
+      const { error: updateError } = await supabase
+        .from('calendar_events')
+        .update({ user_id: 1 })
+        .is('user_id', null);
+      
+      if (updateError) {
+        console.log('Error updating user_id:', updateError);
+        return res.status(500).json({ message: updateError.message });
+      }
+      
+      console.log('Successfully updated user_id for existing events');
+      res.status(200).json({ 
+        message: "Successfully updated user_id for existing events",
+        updatedCount: eventsWithoutUserId?.length || 0
+      });
+    } catch (err) {
+      console.log('Fix user_id error:', err);
+      res.status(500).json({ message: "Failed to fix user_id" });
+    }
+  });
+
   // === Calendar Events ===
   app.get('/api/calendar-events', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
     
     const user = req.user as any;
+    console.log('Calendar events request - User:', user);
+    console.log('Calendar events request - User ID:', user.id);
+    
     const { data, error } = await supabase
       .from('calendar_events')
       .select('*')
       .eq('user_id', user.id)
       .order('date', { ascending: true });
     
-    if (error) return res.status(500).json({ message: error.message });
+    console.log('Calendar events query result:', data?.length || 0, 'events found');
+    console.log('Calendar events data:', data?.map(e => ({ id: e.id, title: e.title, user_id: e.user_id })));
+    
+    if (error) {
+      console.log('Calendar events error:', error);
+      return res.status(500).json({ message: error.message });
+    }
     res.json(data || []);
   });
 
