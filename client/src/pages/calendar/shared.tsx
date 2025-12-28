@@ -285,7 +285,7 @@ export default function SharedCalendar() {
                                     >
                                       <MessageCircle className="h-3 w-3" />
                                     </Button>
-                                    {user?.id === event.user.id && (
+                                    {user?.id === event.user?.id && (
                                       <Button
                                         size="sm"
                                         variant="ghost"
@@ -359,7 +359,7 @@ export default function SharedCalendar() {
                                 <MessageCircle className="h-4 w-4 mr-1" />
                                 Comentarios ({event.comments.length})
                               </Button>
-                              {user?.id === event.user.id && (
+                              {user?.id === event.user?.id && (
                                 <Button
                                   size="sm"
                                   variant="outline"

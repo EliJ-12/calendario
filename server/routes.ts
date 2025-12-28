@@ -1,5 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
+import express from 'express';
 import multer from "multer";
 import path from "path";
 import { storage } from "./storage.js";
@@ -8,6 +9,7 @@ import { api } from "../shared/routes.js";
 import { z } from "zod";
 import { insertUserSchema } from "../shared/schema.js";
 import { createClient } from '@supabase/supabase-js';
+import './types.d.ts';
 
 import { db } from "./db.js";
 import { users } from "../shared/schema.js";

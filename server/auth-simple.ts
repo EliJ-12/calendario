@@ -1,9 +1,11 @@
-import { Express } from "express";
+import { Express, Request, Response } from "express";
+import crypto from 'crypto';
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import bcrypt from "bcrypt";
 import { storage } from "./storage.js";
 import { User } from "../shared/schema.js";
+import './types.d.ts';
 
 const scryptAsync = promisify(scrypt);
 
@@ -72,7 +74,7 @@ function verifyToken(token: string): User | null {
       username: decoded.username,
       role: decoded.role,
       fullName: '', // Will be filled from storage if needed
-      createdAt: new Date().toISOString()
+      createdAt: new Date()
     };
   } catch {
     return null;
