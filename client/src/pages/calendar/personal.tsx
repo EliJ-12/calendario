@@ -145,7 +145,8 @@ export default function PersonalCalendar() {
         method: 'DELETE'
       });
       if (!response.ok) throw new Error('Failed to delete event');
-      return response.json();
+      // DELETE returns 204 with no content, don't try to parse JSON
+      return null;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/calendar-events'] });
@@ -248,6 +249,9 @@ export default function PersonalCalendar() {
   const startDate = startOfWeek(monthStart, { weekStartsOn: 1 }); // Monday = 1
   const endDate = endOfWeek(monthEnd, { weekStartsOn: 1 }); // Monday = 1
   const monthDays = eachDayOfInterval({ start: startDate, end: endDate });
+
+  // Debug: log first few days to verify alignment
+  console.log('First week of month:', monthDays.slice(0, 7).map(d => format(d, 'EEE dd')));
 
   const previousMonth = () => setCurrentMonth(subMonths(currentMonth, 1));
   const nextMonth = () => setCurrentMonth(addMonths(currentMonth, 1));
@@ -424,10 +428,19 @@ export default function PersonalCalendar() {
                         <div className="text-sm font-medium">{format(day, 'd')}</div>
                         <div className="flex flex-wrap gap-1 mt-1">
                           {(() => {
-                            const eventsByCategory = getEventsByCategoryForDate(day);
-                            const entries = Object.entries(eventsByCategory);
-                            console.log('Rendering day:', format(day, 'yyyy-MM-dd'), 'entries:', entries);
-                            return entries.map(([category, count]) => {
+                            const dayEvents = getEventsForDate(day);
+                            if (dayEvents.length === 0) return null;
+                            
+                            const eventsByCategory = dayEvents.reduce((acc, event) => {
+                              const category = event.category;
+                              if (!acc[category]) {
+                                acc[category] = 0;
+                              }
+                              acc[category]++;
+                              return acc;
+                            }, {} as Record<string, number>);
+                            
+                            return Object.entries(eventsByCategory).map(([category, count]) => {
                               const colors = getCategoryColor(category as EventCategory);
                               return (
                                 <div
