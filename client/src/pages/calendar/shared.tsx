@@ -357,7 +357,7 @@ export default function SharedCalendar() {
                                 onClick={() => openEventComments(event)}
                               >
                                 <MessageCircle className="h-4 w-4 mr-1" />
-                                Comentarios ({event.comments.length})
+                                Comentarios ({event.comments?.length || 0})
                               </Button>
                               {user?.id === event.user?.id && (
                                 <Button
@@ -419,12 +419,12 @@ export default function SharedCalendar() {
 
                   {/* Comments List */}
                   <div className="space-y-3">
-                    <Label>Comentarios ({selectedEvent.comments.length})</Label>
+                    <Label>Comentarios ({selectedEvent.comments?.length || 0})</Label>
                     <ScrollArea className="h-64">
-                      {selectedEvent.comments.length === 0 ? (
+                      {(!selectedEvent.comments || selectedEvent.comments.length === 0) ? (
                         <p className="text-gray-500 text-center py-4">No hay comentarios aún</p>
                       ) : (
-                        selectedEvent.comments.map(comment => (
+                        selectedEvent.comments?.map(comment => (
                           <div key={comment.id} className="flex gap-3 p-3 border rounded-lg">
                             <Avatar className="h-8 w-8">
                               <AvatarFallback>
