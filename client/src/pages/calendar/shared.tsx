@@ -143,11 +143,15 @@ export default function SharedCalendar() {
   
   const previousWeek = () => setCurrentMonth(prev => {
     const weekStart = startOfWeek(prev, { weekStartsOn: 1 });
-    return subMonths(weekStart, 1);
+    const newWeekStart = new Date(weekStart);
+    newWeekStart.setDate(weekStart.getDate() - 7);
+    return newWeekStart;
   });
   const nextWeek = () => setCurrentMonth(prev => {
     const weekStart = startOfWeek(prev, { weekStartsOn: 1 });
-    return addMonths(weekStart, 1);
+    const newWeekStart = new Date(weekStart);
+    newWeekStart.setDate(weekStart.getDate() + 7);
+    return newWeekStart;
   });
   
   const previousYear = () => setCurrentMonth(prev => subMonths(prev, 12));
@@ -380,66 +384,126 @@ export default function SharedCalendar() {
             
             {viewMode === 'week' && (
               <>
-                <div className="grid grid-cols-1 sm:grid-cols-8 gap-1 mb-2">
-                  <div className="text-center text-sm font-medium p-2 hidden sm:block">Hora</div>
-                  {Array.from({ length: 7 }, (_, i) => {
-                    const weekStart = startOfWeek(currentMonth, { weekStartsOn: 1 });
-                    const currentDate = new Date(weekStart);
-                    currentDate.setDate(weekStart.getDate() + i);
-                    return (
-                      <div key={i} className="text-center text-sm font-medium p-2">
-                        <div>{['L', 'M', 'X', 'J', 'V', 'S', 'D'][i]}</div>
-                        <div className="text-xs text-gray-500">{format(currentDate, 'd')}</div>
-                      </div>
-                    );
-                  })}
-                </div>
-                <div className="space-y-1">
-                  {Array.from({ length: 24 }, (_, hour) => (
-                    <div key={hour} className="grid grid-cols-1 sm:grid-cols-8 gap-1">
-                      <div className="text-xs text-gray-500 p-1 text-right hidden sm:block">
-                        {hour.toString().padStart(2, '0')}:00
-                      </div>
-                      {Array.from({ length: 7 }, (_, dayIndex) => {
-                        const weekStart = startOfWeek(currentMonth, { weekStartsOn: 1 });
-                        const currentDate = new Date(weekStart);
-                        currentDate.setDate(weekStart.getDate() + dayIndex);
-                        const dayEvents = getEventsForDate(currentDate).filter(event => {
-                          const eventHour = parseInt(event.time?.split(':')[0] || '0');
-                          return eventHour === hour;
-                        });
-                        
-                        return (
-                          <div
-                            key={dayIndex}
-                            className="border rounded p-1 min-h-[40px] bg-white hover:bg-gray-50 cursor-pointer"
-                            onClick={() => setSelectedDate(currentDate)}
-                          >
-                            <div className="text-xs text-gray-500 sm:hidden">
-                              {hour.toString().padStart(2, '0')}:00 - {['L', 'M', 'X', 'J', 'V', 'S', 'D'][dayIndex]} {format(currentDate, 'd')}
-                            </div>
-                            {dayEvents.length > 0 && (
-                              <div className="space-y-1">
-                                {dayEvents.map(event => {
-                                  const colors = getCategoryColor(event.category);
-                                  return (
-                                    <div
-                                      key={event.id}
-                                      className="text-xs p-1 rounded"
-                                      style={{ backgroundColor: colors.bgColor, color: colors.color }}
-                                      title={`${event.title} - ${event.user?.full_name || event.user?.username || 'Usuario desconocido'}`}
-                                    >
-                                      {event.title}
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            )}
+                {/* Mobile view: Simple week calendar */}
+                <div className="sm:hidden">
+                  <div className="grid grid-cols-7 gap-1 mb-2">
+                    {Array.from({ length: 7 }, (_, i) => {
+                      const weekStart = startOfWeek(currentMonth, { weekStartsOn: 1 });
+                      const currentDate = new Date(weekStart);
+                      currentDate.setDate(weekStart.getDate() + i);
+                      const dayEvents = getEventsForDate(currentDate);
+                      const isToday = isSameDay(currentDate, new Date());
+                      
+                      return (
+                        <div
+                          key={i}
+                          className={`
+                            text-center p-2 border rounded cursor-pointer transition-colors
+                            ${isToday ? 'border-blue-500 border-2 bg-blue-50' : 'border-gray-200 bg-white'}
+                            hover:bg-gray-100
+                          `}
+                          onClick={() => setSelectedDate(currentDate)}
+                        >
+                          <div className="text-xs font-medium text-gray-500">
+                            {['L', 'M', 'X', 'J', 'V', 'S', 'D'][i]}
                           </div>
-                        );
-                      })}
-                    </div>
-                  ))}
+                          <div className="text-sm font-bold mt-1">
+                            {format(currentDate, 'd')}
+                          </div>
+                          <div className="flex flex-wrap gap-1 mt-1 justify-center">
+                            {(() => {
+                              if (dayEvents.length === 0) return null;
+                              
+                              const eventsByCategory = dayEvents.reduce((acc, event) => {
+                                const category = event.category;
+                                if (!acc[category]) {
+                                  acc[category] = { count: 0, users: [] };
+                                }
+                                acc[category].count++;
+                                acc[category].users.push(event.user);
+                                return acc;
+                              }, {} as Record<string, { count: number; users: any[] }>);
+                              
+                              return Object.entries(eventsByCategory).map(([category, data]) => {
+                                const colors = getCategoryColor(category as EventCategory);
+                                const usersList = data.users.map(u => (u && (u.full_name || u.username)) || 'Usuario desconocido').join(', ');
+                                return (
+                                  <div
+                                    key={category}
+                                    className="w-3 h-3 rounded-full"
+                                    style={{ backgroundColor: colors.color }}
+                                    title={`${category}: ${data.count} evento${data.count > 1 ? 's' : ''} - Compartido por: ${usersList}`}
+                                  />
+                                );
+                              });
+                            })()}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Desktop view: Hourly grid */}
+                <div className="hidden sm:block">
+                  <div className="grid grid-cols-8 gap-1 mb-2">
+                    <div className="text-center text-sm font-medium p-2">Hora</div>
+                    {Array.from({ length: 7 }, (_, i) => {
+                      const weekStart = startOfWeek(currentMonth, { weekStartsOn: 1 });
+                      const currentDate = new Date(weekStart);
+                      currentDate.setDate(weekStart.getDate() + i);
+                      return (
+                        <div key={i} className="text-center text-sm font-medium p-2">
+                          <div>{['L', 'M', 'X', 'J', 'V', 'S', 'D'][i]}</div>
+                          <div className="text-xs text-gray-500">{format(currentDate, 'd')}</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="space-y-1">
+                    {Array.from({ length: 24 }, (_, hour) => (
+                      <div key={hour} className="grid grid-cols-8 gap-1">
+                        <div className="text-xs text-gray-500 p-1 text-right">
+                          {hour.toString().padStart(2, '0')}:00
+                        </div>
+                        {Array.from({ length: 7 }, (_, dayIndex) => {
+                          const weekStart = startOfWeek(currentMonth, { weekStartsOn: 1 });
+                          const currentDate = new Date(weekStart);
+                          currentDate.setDate(weekStart.getDate() + dayIndex);
+                          const dayEvents = getEventsForDate(currentDate).filter(event => {
+                            const eventHour = parseInt(event.time?.split(':')[0] || '0');
+                            return eventHour === hour;
+                          });
+                          
+                          return (
+                            <div
+                              key={dayIndex}
+                              className="border rounded p-1 min-h-[40px] bg-white hover:bg-gray-50 cursor-pointer"
+                              onClick={() => setSelectedDate(currentDate)}
+                            >
+                              {dayEvents.length > 0 && (
+                                <div className="space-y-1">
+                                  {dayEvents.map(event => {
+                                    const colors = getCategoryColor(event.category);
+                                    return (
+                                      <div
+                                        key={event.id}
+                                        className="text-xs p-1 rounded"
+                                        style={{ backgroundColor: colors.bgColor, color: colors.color }}
+                                        title={`${event.title} - ${event.user?.full_name || event.user?.username || 'Usuario desconocido'}`}
+                                      >
+                                        {event.title}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </>
             )}
