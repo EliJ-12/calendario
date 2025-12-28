@@ -223,6 +223,19 @@ export default function PersonalCalendar() {
     return events.filter(event => isSameDay(new Date(event.date), date));
   };
 
+  const getEventsByCategoryForDate = (date: Date) => {
+    const dayEvents = getEventsForDate(date);
+    const eventsByCategory = dayEvents.reduce((acc, event) => {
+      const category = event.category;
+      if (!acc[category]) {
+        acc[category] = 0;
+      }
+      acc[category]++;
+      return acc;
+    }, {} as Record<string, number>);
+    return eventsByCategory;
+  };
+
   const getCategoryColor = (category: EventCategory) => {
     const cat = EVENT_CATEGORIES.find(c => c.value === category);
     return cat || { color: '#FF3E40', bgColor: '#FF3E4010' };
@@ -407,22 +420,20 @@ export default function PersonalCalendar() {
                         onMouseLeave={() => setHoveredDate(null)}
                       >
                         <div className="text-sm font-medium">{format(day, 'd')}</div>
-                        <div className="space-y-1 mt-1">
-                          {dayEvents.slice(0, 3).map((event, index) => {
-                            const colors = getCategoryColor(event.category);
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {Object.entries(getEventsByCategoryForDate(day)).map(([category, count]) => {
+                            const colors = getCategoryColor(category as EventCategory);
                             return (
                               <div
-                                key={index}
-                                className="text-xs p-1 rounded truncate"
-                                style={{ backgroundColor: colors.bgColor, color: colors.color }}
+                                key={category}
+                                className="w-4 h-4 rounded flex items-center justify-center text-xs font-bold text-white"
+                                style={{ backgroundColor: colors.color }}
+                                title={`${category}: ${count} evento${count > 1 ? 's' : ''}`}
                               >
-                                {event.time && `${event.time} `}{event.title}
+                                {count}
                               </div>
                             );
                           })}
-                          {dayEvents.length > 3 && (
-                            <div className="text-xs text-gray-500">+{dayEvents.length - 3} más</div>
-                          )}
                         </div>
                       </div>
                     </TooltipTrigger>
