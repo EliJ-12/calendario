@@ -186,6 +186,47 @@ export async function registerRoutes(
     }
   });
 
+  // Check table structure and constraints
+  app.get('/api/check-table-structure', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
+    
+    try {
+      // Get table structure
+      const { data: columns, error: columnsError } = await supabase
+        .from('information_schema.columns')
+        .select('column_name, data_type, is_nullable, column_default')
+        .eq('table_name', 'calendar_events')
+        .eq('table_schema', 'public');
+      
+      // Get check constraints
+      const { data: constraints, error: constraintsError } = await supabase
+        .from('information_schema.check_constraints')
+        .select('constraint_name, check_clause')
+        .eq('constraint_schema', 'public');
+      
+      // Get constraint columns usage
+      const { data: usage, error: usageError } = await supabase
+        .from('information_schema.constraint_column_usage')
+        .select('constraint_name, column_name')
+        .eq('table_name', 'calendar_events')
+        .eq('table_schema', 'public');
+      
+      res.status(200).json({
+        columns: columns || [],
+        constraints: constraints || [],
+        usage: usage || [],
+        errors: {
+          columns: columnsError?.message,
+          constraints: constraintsError?.message,
+          usage: usageError?.message
+        }
+      });
+    } catch (err) {
+      console.log('Table structure check error:', err);
+      res.status(500).json({ message: "Failed to check table structure" });
+    }
+  });
+
   // Update calendar_events table structure
   app.post('/api/update-calendar-table', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
@@ -282,9 +323,7 @@ export async function registerRoutes(
         category: req.body.category,
         date: req.body.date,
         color: req.body.color || null,
-        time: req.body.time || null,
-        is_shared: req.body.isShared || false,
-        shared_by: req.body.isShared ? user.id : null
+        time: req.body.time || null
       };
       
       console.log('Processed event data:', eventData);
@@ -381,14 +420,13 @@ export async function registerRoutes(
   app.get('/api/shared-events', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
     
+    // For now, return all events as shared since is_shared field doesn't exist
     const { data, error } = await supabase
       .from('calendar_events')
       .select(`
         *,
-        users!calendar_events_user_id_fkey(id, username, full_name),
-        event_comments(*, users!event_comments_user_id_fkey(id, username))
+        users!calendar_events_user_id_fkey(id, username, full_name)
       `)
-      .eq('is_shared', true)
       .order('date', { ascending: true });
     
     if (error) {
