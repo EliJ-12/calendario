@@ -188,6 +188,36 @@ export async function registerRoutes(
     }
   });
 
+  // Create event_comments table
+  app.post('/api/create-comments-table', async (req, res) => {
+    try {
+      console.log('Creating event_comments table...');
+      
+      const { error } = await supabase.rpc('exec_sql', {
+        sql: `
+          CREATE TABLE IF NOT EXISTS event_comments (
+            id SERIAL PRIMARY KEY,
+            event_id INTEGER REFERENCES calendar_events(id) ON DELETE CASCADE,
+            user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+            comment TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          );
+        `
+      });
+      
+      if (error) {
+        console.log('Error creating comments table:', error);
+        return res.status(500).json({ message: error.message });
+      }
+      
+      console.log('Event comments table created successfully');
+      res.status(200).json({ message: "Event comments table created successfully" });
+    } catch (err) {
+      console.log('Create comments table error:', err);
+      res.status(500).json({ message: "Failed to create comments table" });
+    }
+  });
+
   // Public debug endpoint for shared calendar
   app.get('/api/debug-shared', async (req, res) => {
     try {
@@ -739,6 +769,42 @@ export async function registerRoutes(
     } catch (err) {
       console.log('Comment deletion error:', err);
       res.status(500).json({ message: "Failed to delete comment" });
+    }
+  });
+
+  // Debug endpoint for comments
+  app.get('/api/debug-comments/:eventId', async (req, res) => {
+    try {
+      const eventId = Number(req.params.eventId);
+      console.log('Debug: Testing comments query for event:', eventId);
+      
+      const { data, error } = await supabase
+        .from('event_comments')
+        .select(`
+          *,
+          users!event_comments_user_id_fkey(id, username, full_name)
+        `)
+        .eq('event_id', eventId)
+        .order('created_at', { ascending: true });
+      
+      if (error) {
+        console.log('Debug: Comments error:', error);
+        return res.status(500).json({ 
+          message: "Query failed", 
+          error: error.message,
+          details: error.details 
+        });
+      }
+      
+      console.log('Debug: Comments data:', data);
+      res.status(200).json({ 
+        message: "Query successful", 
+        count: data?.length || 0,
+        data: data || []
+      });
+    } catch (err) {
+      console.log('Debug: Comments error:', err);
+      res.status(500).json({ message: "Debug failed", error: String(err) });
     }
   });
 

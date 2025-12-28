@@ -69,7 +69,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           </div>
           <div className="flex-1 overflow-hidden">
             <p className="text-sm font-medium truncate">{user?.fullName}</p>
-            <p className="text-xs text-muted-foreground truncate capitalize">{user?.role}</p>
           </div>
         </div>
         <Button 

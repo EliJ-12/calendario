@@ -48,7 +48,7 @@ CREATE TABLE IF NOT EXISTS shared_events (
 -- Create event_comments table
 CREATE TABLE IF NOT EXISTS event_comments (
   id SERIAL PRIMARY KEY,
-  shared_event_id INTEGER REFERENCES shared_events(id) ON DELETE CASCADE,
+  event_id INTEGER REFERENCES calendar_events(id) ON DELETE CASCADE,
   user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
   comment TEXT NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
