@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, startOfWeek, endOfWeek } from "date-fns";
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, startOfWeek, endOfWeek, startOfYear, endOfYear, eachWeekOfInterval, eachMonthOfInterval } from "date-fns";
 import { es } from "date-fns/locale";
-import { Calendar, ChevronLeft, ChevronRight, Plus, X, Edit2, Trash2, Share2 } from "lucide-react";
+import { Calendar, ChevronLeft, ChevronRight, Plus, X, Edit2, Trash2, Share2, CalendarDays, CalendarRange } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -56,6 +56,7 @@ export default function PersonalCalendar() {
   const [isEventDialogOpen, setIsEventDialogOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
   const [hoveredDate, setHoveredDate] = useState<Date | null>(null);
+  const [viewMode, setViewMode] = useState<'month' | 'week' | 'year'>('month');
   
   const [formData, setFormData] = useState<EventFormData>({
     title: '',
@@ -256,6 +257,18 @@ export default function PersonalCalendar() {
 
   const previousMonth = () => setCurrentMonth(subMonths(currentMonth, 1));
   const nextMonth = () => setCurrentMonth(addMonths(currentMonth, 1));
+  
+  const previousWeek = () => setCurrentMonth(prev => {
+    const weekStart = startOfWeek(prev, { weekStartsOn: 1 });
+    return subMonths(weekStart, 1);
+  });
+  const nextWeek = () => setCurrentMonth(prev => {
+    const weekStart = startOfWeek(prev, { weekStartsOn: 1 });
+    return addMonths(weekStart, 1);
+  });
+  
+  const previousYear = () => setCurrentMonth(prev => subMonths(prev, 12));
+  const nextYear = () => setCurrentMonth(prev => addMonths(prev, 12));
 
   if (isLoading) {
     return <div className="flex items-center justify-center h-64">Cargando...</div>;
@@ -266,7 +279,35 @@ export default function PersonalCalendar() {
       <TooltipProvider>
         <div className="p-6 space-y-6">
           <div className="flex justify-between items-center">
-            <h1 className="text-3xl font-bold">Mi Calendario</h1>
+            <div>
+              <h1 className="text-3xl font-bold">Mi Calendario</h1>
+              <div className="flex gap-2 mt-2">
+                <Button
+                  variant={viewMode === 'month' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setViewMode('month')}
+                >
+                  <Calendar className="h-4 w-4 mr-1" />
+                  Mes
+                </Button>
+                <Button
+                  variant={viewMode === 'week' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setViewMode('week')}
+                >
+                  <CalendarDays className="h-4 w-4 mr-1" />
+                  Semana
+                </Button>
+                <Button
+                  variant={viewMode === 'year' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setViewMode('year')}
+                >
+                  <CalendarRange className="h-4 w-4 mr-1" />
+                  Año
+                </Button>
+              </div>
+            </div>
             <Dialog open={isEventDialogOpen} onOpenChange={setIsEventDialogOpen}>
               <DialogTrigger asChild>
                 <Button onClick={() => { resetForm(); setSelectedDate(new Date()); }}>
@@ -386,133 +427,263 @@ export default function PersonalCalendar() {
             <div className="flex items-center justify-between">
               <CardTitle className="flex items-center gap-2">
                 <Calendar className="h-5 w-5" />
-                {format(currentMonth, 'MMMM yyyy', { locale: es })}
+                {viewMode === 'month' && format(currentMonth, 'MMMM yyyy', { locale: es })}
+                {viewMode === 'week' && `Semana del ${format(startOfWeek(currentMonth, { weekStartsOn: 1 }), 'd MMM', { locale: es })}`}
+                {viewMode === 'year' && format(currentMonth, 'yyyy', { locale: es })}
               </CardTitle>
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={previousMonth}>
+                <Button variant="outline" size="sm" onClick={
+                  viewMode === 'month' ? previousMonth :
+                  viewMode === 'week' ? previousWeek :
+                  previousYear
+                }>
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
-                <Button variant="outline" size="sm" onClick={nextMonth}>
+                <Button variant="outline" size="sm" onClick={
+                  viewMode === 'month' ? nextMonth :
+                  viewMode === 'week' ? nextWeek :
+                  nextYear
+                }>
                   <ChevronRight className="h-4 w-4" />
                 </Button>
               </div>
             </div>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-7 gap-1 mb-2">
-              {['L', 'M', 'X', 'J', 'V', 'S', 'D'].map(day => (
-                <div key={day} className="text-center text-sm font-medium p-2">
-                  {day}
+            {viewMode === 'month' && (
+              <>
+                <div className="grid grid-cols-7 gap-1 mb-2">
+                  {['L', 'M', 'X', 'J', 'V', 'S', 'D'].map(day => (
+                    <div key={day} className="text-center text-sm font-medium p-2">
+                      {day}
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-            <div className="grid grid-cols-7 gap-1">
-              {monthDays.map(day => {
-                const dayEvents = getEventsForDate(day);
-                const isCurrentMonth = isSameMonth(day, currentMonth);
-                const isToday = isSameDay(day, new Date());
-                
-                return (
-                  <Tooltip key={day.toString()}>
-                    <TooltipTrigger asChild>
-                      <div
-                        className={`
-                          relative p-2 h-20 border rounded cursor-pointer transition-colors
-                          ${isCurrentMonth ? 'bg-white' : 'bg-gray-50'}
-                          ${isToday ? 'border-blue-500 border-2' : 'border-gray-200'}
-                          hover:bg-gray-100
-                        `}
-                        onClick={() => setSelectedDate(day)}
-                        onMouseEnter={() => setHoveredDate(day)}
-                        onMouseLeave={() => setHoveredDate(null)}
-                      >
-                        <div className="text-sm font-medium">{format(day, 'd')}</div>
-                        <div className="flex flex-wrap gap-1 mt-1">
-                          {(() => {
-                            const dayEvents = getEventsForDate(day);
-                            if (dayEvents.length === 0) return null;
-                            
-                            const eventsByCategory = dayEvents.reduce((acc, event) => {
-                              const category = event.category;
-                              if (!acc[category]) {
-                                acc[category] = 0;
-                              }
-                              acc[category]++;
-                              return acc;
-                            }, {} as Record<string, number>);
-                            
-                            return Object.entries(eventsByCategory).map(([category, count]) => {
-                              const colors = getCategoryColor(category as EventCategory);
-                              return (
-                                <div
-                                  key={category}
-                                  className="w-4 h-4 rounded flex items-center justify-center text-xs font-bold text-white"
-                                  style={{ backgroundColor: colors.color }}
-                                  title={`${category}: ${count} evento${count > 1 ? 's' : ''}`}
-                                >
-                                  {count}
-                                </div>
-                              );
-                            });
-                          })()}
-                        </div>
+                <div className="grid grid-cols-7 gap-1">
+                  {monthDays.map(day => {
+                    const dayEvents = getEventsForDate(day);
+                    const isCurrentMonth = isSameMonth(day, currentMonth);
+                    const isToday = isSameDay(day, new Date());
+                    
+                    return (
+                      <Tooltip key={day.toString()}>
+                        <TooltipTrigger asChild>
+                          <div
+                            className={`
+                              relative p-2 h-20 border rounded cursor-pointer transition-colors
+                              ${isCurrentMonth ? 'bg-white' : 'bg-gray-50'}
+                              ${isToday ? 'border-blue-500 border-2' : 'border-gray-200'}
+                              hover:bg-gray-100
+                            `}
+                            onClick={() => setSelectedDate(day)}
+                            onMouseEnter={() => setHoveredDate(day)}
+                            onMouseLeave={() => setHoveredDate(null)}
+                          >
+                            <div className="text-sm font-medium">{format(day, 'd')}</div>
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {(() => {
+                                const dayEvents = getEventsForDate(day);
+                                if (dayEvents.length === 0) return null;
+                                
+                                const eventsByCategory = dayEvents.reduce((acc, event) => {
+                                  const category = event.category;
+                                  if (!acc[category]) {
+                                    acc[category] = 0;
+                                  }
+                                  acc[category]++;
+                                  return acc;
+                                }, {} as Record<string, number>);
+                                
+                                return Object.entries(eventsByCategory).map(([category, count]) => {
+                                  const colors = getCategoryColor(category as EventCategory);
+                                  return (
+                                    <div
+                                      key={category}
+                                      className="w-4 h-4 rounded flex items-center justify-center text-xs font-bold text-white"
+                                      style={{ backgroundColor: colors.color }}
+                                      title={`${category}: ${count} evento${count > 1 ? 's' : ''}`}
+                                    >
+                                      {count}
+                                    </div>
+                                  );
+                                });
+                              })()}
+                            </div>
+                          </div>
+                        </TooltipTrigger>
+                        {hoveredDate && isSameDay(hoveredDate, day) && dayEvents.length > 0 && (
+                          <TooltipContent side="top" className="p-3 max-w-xs">
+                            <div className="space-y-2">
+                              <div className="font-medium">{format(day, 'd MMMM yyyy', { locale: es })}</div>
+                              {dayEvents.map(event => {
+                                const colors = getCategoryColor(event.category);
+                                return (
+                                  <div key={event.id} className="space-y-1">
+                                    <div className="flex items-center gap-2">
+                                      <div className="w-2 h-2 rounded" style={{ backgroundColor: colors.color }} />
+                                      <span className="text-sm font-medium">{event.title}</span>
+                                    </div>
+                                    <div className="text-xs text-gray-600 ml-4">
+                                      {event.category}
+                                      {event.time && ` • ${event.time}`}
+                                    </div>
+                                    {event.description && (
+                                      <div className="text-xs text-gray-500 ml-4">{event.description}</div>
+                                    )}
+                                    <div className="flex gap-1 ml-4">
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        className="h-6 w-6 p-0"
+                                        onClick={(e) => { e.stopPropagation(); handleEditEvent(event); }}
+                                      >
+                                        <Edit2 className="h-3 w-3" />
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        className="h-6 w-6 p-0"
+                                        onClick={(e) => { e.stopPropagation(); handleShareEvent(event.id); }}
+                                      >
+                                        <Share2 className="h-3 w-3" />
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        className="h-6 w-6 p-0"
+                                        onClick={(e) => { e.stopPropagation(); handleDeleteEvent(event.id); }}
+                                      >
+                                        <Trash2 className="h-3 w-3" />
+                                      </Button>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </TooltipContent>
+                        )}
+                      </Tooltip>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+            
+            {viewMode === 'week' && (
+              <>
+                <div className="grid grid-cols-8 gap-1 mb-2">
+                  <div className="text-center text-sm font-medium p-2">Hora</div>
+                  {['L', 'M', 'X', 'J', 'V', 'S', 'D'].map(day => (
+                    <div key={day} className="text-center text-sm font-medium p-2">
+                      {day}
+                    </div>
+                  ))}
+                </div>
+                <div className="space-y-1">
+                  {Array.from({ length: 24 }, (_, hour) => (
+                    <div key={hour} className="grid grid-cols-8 gap-1">
+                      <div className="text-xs text-gray-500 p-1 text-right">
+                        {hour.toString().padStart(2, '0')}:00
                       </div>
-                    </TooltipTrigger>
-                    {hoveredDate && isSameDay(hoveredDate, day) && dayEvents.length > 0 && (
-                      <TooltipContent side="top" className="p-3 max-w-xs">
-                        <div className="space-y-2">
-                          <div className="font-medium">{format(day, 'd MMMM yyyy', { locale: es })}</div>
-                          {dayEvents.map(event => {
-                            const colors = getCategoryColor(event.category);
+                      {Array.from({ length: 7 }, (_, dayIndex) => {
+                        const weekStart = startOfWeek(currentMonth, { weekStartsOn: 1 });
+                        const currentDate = new Date(weekStart);
+                        currentDate.setDate(weekStart.getDate() + dayIndex);
+                        const dayEvents = getEventsForDate(currentDate).filter(event => {
+                          const eventHour = parseInt(event.time?.split(':')[0] || '0');
+                          return eventHour === hour;
+                        });
+                        
+                        return (
+                          <div
+                            key={dayIndex}
+                            className="border rounded p-1 min-h-[40px] bg-white hover:bg-gray-50 cursor-pointer"
+                            onClick={() => setSelectedDate(currentDate)}
+                          >
+                            {dayEvents.length > 0 && (
+                              <div className="space-y-1">
+                                {dayEvents.map(event => {
+                                  const colors = getCategoryColor(event.category);
+                                  return (
+                                    <div
+                                      key={event.id}
+                                      className="text-xs p-1 rounded"
+                                      style={{ backgroundColor: colors.bgColor, color: colors.color }}
+                                    >
+                                      {event.title}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+            
+            {viewMode === 'year' && (
+              <div className="grid grid-cols-3 gap-4">
+                {eachMonthOfInterval({
+                  start: startOfYear(currentMonth),
+                  end: endOfYear(currentMonth)
+                }).map(month => {
+                  const monthStart = startOfMonth(month);
+                  const monthEnd = endOfMonth(month);
+                  const monthDays = eachDayOfInterval({ start: monthStart, end: monthEnd });
+                  const monthEvents = events.filter(event => 
+                    isSameMonth(new Date(event.date), month)
+                  );
+                  
+                  return (
+                    <Card key={month.toString()} className="cursor-pointer hover:bg-gray-50" onClick={() => {
+                      setCurrentMonth(month);
+                      setViewMode('month');
+                    }}>
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-sm">{format(month, 'MMMM', { locale: es })}</CardTitle>
+                      </CardHeader>
+                      <CardContent className="pt-0">
+                        <div className="grid grid-cols-7 gap-1 text-xs">
+                          {['L', 'M', 'X', 'J', 'V', 'S', 'D'].map(day => (
+                            <div key={day} className="text-center text-gray-500">
+                              {day}
+                            </div>
+                          ))}
+                          {monthDays.slice(0, 35).map(day => {
+                            const dayEvents = getEventsForDate(day);
+                            const isCurrentMonth = isSameMonth(day, currentMonth);
+                            const isToday = isSameDay(day, new Date());
+                            
                             return (
-                              <div key={event.id} className="space-y-1">
-                                <div className="flex items-center gap-2">
-                                  <div className="w-2 h-2 rounded" style={{ backgroundColor: colors.color }} />
-                                  <span className="text-sm font-medium">{event.title}</span>
-                                </div>
-                                <div className="text-xs text-gray-600 ml-4">
-                                  {event.category}
-                                  {event.time && ` • ${event.time}`}
-                                </div>
-                                {event.description && (
-                                  <div className="text-xs text-gray-500 ml-4">{event.description}</div>
-                                )}
-                                <div className="flex gap-1 ml-4">
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    className="h-6 w-6 p-0"
-                                    onClick={(e) => { e.stopPropagation(); handleEditEvent(event); }}
-                                  >
-                                    <Edit2 className="h-3 w-3" />
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    className="h-6 w-6 p-0"
-                                    onClick={(e) => { e.stopPropagation(); handleShareEvent(event.id); }}
-                                  >
-                                    <Share2 className="h-3 w-3" />
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    className="h-6 w-6 p-0"
-                                    onClick={(e) => { e.stopPropagation(); handleDeleteEvent(event.id); }}
-                                  >
-                                    <Trash2 className="h-3 w-3" />
-                                  </Button>
-                                </div>
+                              <div
+                                key={day.toString()}
+                                className={`
+                                  text-center p-1 rounded cursor-pointer
+                                  ${isCurrentMonth ? 'text-gray-900' : 'text-gray-400'}
+                                  ${isToday ? 'bg-blue-500 text-white' : ''}
+                                  ${dayEvents.length > 0 ? 'font-bold' : ''}
+                                `}
+                              >
+                                {format(day, 'd')}
                               </div>
                             );
                           })}
                         </div>
-                      </TooltipContent>
-                    )}
-                  </Tooltip>
-                );
-              })}
-            </div>
+                        {monthEvents.length > 0 && (
+                          <div className="mt-2 text-xs text-gray-600">
+                            {monthEvents.length} evento{monthEvents.length > 1 ? 's' : ''}
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            )}
           </CardContent>
         </Card>
 
