@@ -187,7 +187,7 @@ export default function SharedCalendar() {
         <div className="p-6 space-y-6">
           <div className="flex justify-between items-center">
             <div>
-              <h1 className="text-3xl font-bold">Calendario Compartido</h1>
+              <h1 className="text-[20px] font-bold">Calendario Compartido</h1>
               <div className="flex gap-2 mt-2">
                 <Button
                   variant={viewMode === 'month' ? 'default' : 'outline'}
@@ -238,8 +238,8 @@ export default function SharedCalendar() {
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-2">
-                  <Calendar className="h-5 w-5" />
+                <CardTitle className="flex items-center gap-2 text-[14px]">
+                  <Calendar className="h-4 w-4" />
                   {viewMode === 'month' && format(currentMonth, 'MMMM yyyy', { locale: es })}
                   {viewMode === 'week' && (() => {
                   const weekStart = startOfWeek(currentMonth, { weekStartsOn: 1 });
