@@ -314,13 +314,12 @@ export default function SharedCalendar() {
                                 
                                 return Object.entries(eventsByCategory).map(([category, data]) => {
                                   const colors = getCategoryColor(category as EventCategory);
-                                  const usersList = data.users.map(u => (u && (u.full_name || u.username)) || 'Usuario desconocido').join(', ');
                                   return (
                                     <div
                                       key={category}
                                       className="w-4 h-4 rounded flex items-center justify-center text-xs font-bold text-white"
                                       style={{ backgroundColor: colors.color }}
-                                      title={`${category}: ${data.count} evento${data.count > 1 ? 's' : ''} - Compartido por: ${usersList}`}
+                                      title={`${category}: ${data.count} evento${data.count > 1 ? 's' : ''}`}
                                     >
                                       {data.count}
                                     </div>
@@ -347,8 +346,11 @@ export default function SharedCalendar() {
                                       {event.time && ` • ${event.time}`}
                                     </div>
                                     <div className="text-xs text-gray-500 ml-4">
-                                      Compartido por {event.user?.full_name || event.user?.username || 'Usuario desconocido'}
+                                      Compartido por: {event.user?.full_name || event.user?.username || 'Usuario desconocido'}
                                     </div>
+                                    {event.description && (
+                                      <div className="text-xs text-gray-500 ml-4">{event.description}</div>
+                                    )}
                                     <div className="flex gap-1 ml-4">
                                       <Button
                                         size="sm"
@@ -358,7 +360,7 @@ export default function SharedCalendar() {
                                       >
                                         <MessageCircle className="h-3 w-3" />
                                       </Button>
-                                      {user?.id === event.user?.id && (
+                                      {event.user_id === user?.id && (
                                         <Button
                                           size="sm"
                                           variant="ghost"
@@ -426,16 +428,13 @@ export default function SharedCalendar() {
                               
                               return Object.entries(eventsByCategory).map(([category, data]) => {
                                 const colors = getCategoryColor(category as EventCategory);
-                                const usersList = data.users.map(u => (u && (u.full_name || u.username)) || 'Usuario desconocido').join(', ');
                                 return (
                                   <div
                                     key={category}
-                                    className="w-3 h-3 rounded-full flex items-center justify-center text-xs font-bold text-white"
+                                    className="w-3 h-3 rounded-full"
                                     style={{ backgroundColor: colors.color }}
-                                    title={`${category}: ${data.count} evento${data.count > 1 ? 's' : ''} - Compartido por: ${usersList}`}
-                                  >
-                                    {data.count > 1 ? data.count : ''}
-                                  </div>
+                                    title={`${category}: ${data.count} evento${data.count > 1 ? 's' : ''}`}
+                                  />
                                 );
                               });
                             })()}
