@@ -237,7 +237,12 @@ export default function SharedCalendar() {
                 <CardTitle className="flex items-center gap-2">
                   <Calendar className="h-5 w-5" />
                   {viewMode === 'month' && format(currentMonth, 'MMMM yyyy', { locale: es })}
-                  {viewMode === 'week' && `Semana del ${format(startOfWeek(currentMonth, { weekStartsOn: 1 }), 'd MMM', { locale: es })}`}
+                  {viewMode === 'week' && (() => {
+                  const weekStart = startOfWeek(currentMonth, { weekStartsOn: 1 });
+                  const weekEnd = new Date(weekStart);
+                  weekEnd.setDate(weekStart.getDate() + 6);
+                  return `${format(weekStart, 'd MMM')} - ${format(weekEnd, 'd MMM yyyy', { locale: es })}`;
+                })()}
                   {viewMode === 'year' && format(currentMonth, 'yyyy', { locale: es })}
                 </CardTitle>
                 <div className="flex gap-2">
@@ -377,11 +382,17 @@ export default function SharedCalendar() {
               <>
                 <div className="grid grid-cols-8 gap-1 mb-2">
                   <div className="text-center text-sm font-medium p-2">Hora</div>
-                  {['L', 'M', 'X', 'J', 'V', 'S', 'D'].map(day => (
-                    <div key={day} className="text-center text-sm font-medium p-2">
-                      {day}
-                    </div>
-                  ))}
+                  {Array.from({ length: 7 }, (_, i) => {
+                    const weekStart = startOfWeek(currentMonth, { weekStartsOn: 1 });
+                    const currentDate = new Date(weekStart);
+                    currentDate.setDate(weekStart.getDate() + i);
+                    return (
+                      <div key={i} className="text-center text-sm font-medium p-2">
+                        <div>{['L', 'M', 'X', 'J', 'V', 'S', 'D'][i]}</div>
+                        <div className="text-xs text-gray-500">{format(currentDate, 'd')}</div>
+                      </div>
+                    );
+                  })}
                 </div>
                 <div className="space-y-1">
                   {Array.from({ length: 24 }, (_, hour) => (
@@ -443,6 +454,12 @@ export default function SharedCalendar() {
                     isSameMonth(new Date(event.date), month)
                   );
                   
+                  // Calculate starting position for the first day of the month
+                  const firstDayOfMonth = startOfMonth(month);
+                  const startDayOfWeek = firstDayOfMonth.getDay();
+                  // Convert Sunday (0) to Monday (1) format: 0->6, 1->0, 2->1, etc.
+                  const adjustedStartDay = startDayOfWeek === 0 ? 6 : startDayOfWeek - 1;
+                  
                   return (
                     <Card key={month.toString()} className="cursor-pointer hover:bg-gray-50" onClick={() => {
                       setCurrentMonth(month);
@@ -458,7 +475,12 @@ export default function SharedCalendar() {
                               {day}
                             </div>
                           ))}
-                          {monthDays.slice(0, 35).map(day => {
+                          {/* Empty cells for days before month starts */}
+                          {Array.from({ length: adjustedStartDay }, (_, i) => (
+                            <div key={`empty-${i}`} className="text-center p-1"></div>
+                          ))}
+                          {/* Days of the month */}
+                          {monthDays.map(day => {
                             const dayEvents = getEventsForDate(day);
                             const isCurrentMonth = isSameMonth(day, currentMonth);
                             const isToday = isSameDay(day, new Date());
