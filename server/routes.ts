@@ -186,6 +186,38 @@ export async function registerRoutes(
     }
   });
 
+  // Public debug endpoint for shared calendar
+  app.get('/api/debug-shared', async (req, res) => {
+    try {
+      console.log('Debug: Testing shared events query...');
+      
+      const { data, error } = await supabase
+        .from('calendar_events')
+        .select('*')
+        .eq('is_shared', true)
+        .limit(5);
+      
+      if (error) {
+        console.log('Debug: Shared events error:', error);
+        return res.status(500).json({ 
+          message: "Query failed", 
+          error: error.message,
+          details: error.details 
+        });
+      }
+      
+      console.log('Debug: Shared events data:', data);
+      res.status(200).json({ 
+        message: "Query successful", 
+        count: data?.length || 0,
+        data: data || []
+      });
+    } catch (err) {
+      console.log('Debug: Shared events error:', err);
+      res.status(500).json({ message: "Debug failed", error: String(err) });
+    }
+  });
+
   // Update category constraint to include Comida
   app.post('/api/update-category-constraint', async (req, res) => {
     try {
