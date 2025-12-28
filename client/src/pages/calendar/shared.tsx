@@ -45,10 +45,14 @@ interface SharedEvent {
 
 interface EventComment {
   id: number;
-  userId: number;
-  username: string;
+  user_id: number;
   comment: string;
-  createdAt: string;
+  created_at: string;
+  users?: {
+    id: number;
+    username: string;
+    full_name: string;
+  };
 }
 
 export default function SharedCalendar() {
@@ -435,14 +439,14 @@ export default function SharedCalendar() {
                           <div key={comment.id} className="flex gap-3 p-3 border rounded-lg">
                             <Avatar className="h-8 w-8">
                               <AvatarFallback>
-                                {comment.username.charAt(0).toUpperCase()}
+                                {(comment.users?.username || comment.username || 'U').charAt(0).toUpperCase()}
                               </AvatarFallback>
                             </Avatar>
                             <div className="flex-1">
                               <div className="flex items-center gap-2 mb-1">
-                                <span className="font-medium text-sm">{comment.username}</span>
+                                <span className="font-medium text-sm">{comment.users?.full_name || comment.users?.username || comment.username || 'Usuario desconocido'}</span>
                                 <span className="text-xs text-gray-500">
-                                  {format(new Date(comment.createdAt), 'd MMM HH:mm', { locale: es })}
+                                  {format(new Date(comment.created_at), 'd MMM HH:mm', { locale: es })}
                                 </span>
                               </div>
                               <p className="text-sm">{comment.comment}</p>

@@ -825,18 +825,28 @@ export async function registerRoutes(
       .eq('is_shared', true)
       .order('date', { ascending: true });
     
-    console.log('Shared events with comments:', data?.map(e => ({
+    console.log('Raw shared events data:', JSON.stringify(data, null, 2));
+    
+    // Process the data to ensure proper structure
+    const processedData = data?.map(event => ({
+      ...event,
+      user: event.users || null,
+      comments: event.event_comments || []
+    })) || [];
+    
+    console.log('Processed shared events:', processedData.map(e => ({
       id: e.id,
       title: e.title,
-      commentsCount: e.event_comments?.length || 0,
-      comments: e.event_comments
+      user: e.user,
+      commentsCount: e.comments?.length || 0,
+      comments: e.comments
     })));
     
     if (error) {
       console.log('Shared events error:', error);
       return res.status(500).json({ message: error.message });
     }
-    res.json(data || []);
+    res.json(processedData);
   });
 
   app.post('/api/shared-events', async (req, res) => {
