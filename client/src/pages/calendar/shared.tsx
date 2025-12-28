@@ -68,7 +68,14 @@ export default function SharedCalendar() {
     queryFn: async () => {
       const response = await fetch('/api/shared-events');
       if (!response.ok) throw new Error('Failed to fetch shared events');
-      return response.json();
+      const data = await response.json();
+      console.log('Frontend received shared events:', data?.map(e => ({
+        id: e.id,
+        title: e.title,
+        commentsCount: e.event_comments?.length || 0,
+        comments: e.event_comments
+      })));
+      return data;
     }
   });
 

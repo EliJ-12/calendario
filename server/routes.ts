@@ -825,6 +825,13 @@ export async function registerRoutes(
       .eq('is_shared', true)
       .order('date', { ascending: true });
     
+    console.log('Shared events with comments:', data?.map(e => ({
+      id: e.id,
+      title: e.title,
+      commentsCount: e.event_comments?.length || 0,
+      comments: e.event_comments
+    })));
+    
     if (error) {
       console.log('Shared events error:', error);
       return res.status(500).json({ message: error.message });

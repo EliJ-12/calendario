@@ -65,10 +65,10 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       <div className="p-4 border-t border-border/50">
         <div className="flex items-center gap-3 px-4 py-4 mb-2">
           <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-primary/20 to-blue-500/20 flex items-center justify-center text-primary font-bold">
-            {user?.fullName.charAt(0)}
+            {user?.fullName?.charAt(0) || user?.username?.charAt(0) || 'U'}
           </div>
           <div className="flex-1 overflow-hidden">
-            <p className="text-sm font-medium truncate">{user?.fullName}</p>
+            <p className="text-sm font-medium truncate">{user?.fullName || user?.username || 'Usuario'}</p>
           </div>
         </div>
         <Button 
