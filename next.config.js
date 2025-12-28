@@ -1,9 +1,0 @@
-const withPWA = require('next-pwa')({
-  dest: 'public',
-  register: true,
-  skipWaiting: true,
-})
-
-module.exports = withPWA({
-  // tu configuración actual de Next.js
-})
