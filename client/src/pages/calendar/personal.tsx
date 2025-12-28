@@ -17,11 +17,12 @@ import { useToast } from "@/hooks/use-toast";
 import Layout from "@/components/layout";
 
 const EVENT_CATEGORIES = [
-  { value: 'Examen', color: '#FF3E40', bgColor: '#FF3E4010' },
-  { value: 'Entrega', color: '#FF6B6B', bgColor: '#FF6B6B10' },
-  { value: 'Presentación', color: '#4ECDC4', bgColor: '#4ECDC410' },
-  { value: 'Evento trabajo', color: '#45B7D1', bgColor: '#45B7D110' },
-  { value: 'Evento universidad', color: '#96CEB4', bgColor: '#96CEB410' }
+  { value: 'Examen', color: '#DC2626', bgColor: '#DC262610' },
+  { value: 'Entrega', color: '#EA580C', bgColor: '#EA580C10' },
+  { value: 'Presentación', color: '#16A34A', bgColor: '#16A34A10' },
+  { value: 'Evento trabajo', color: '#2563EB', bgColor: '#2563EB10' },
+  { value: 'Evento universidad', color: '#7C3AED', bgColor: '#7C3AED10' },
+  { value: 'Comida', color: '#DB2777', bgColor: '#DB277710' }
 ] as const;
 
 type EventCategory = typeof EVENT_CATEGORIES[number]['value'];

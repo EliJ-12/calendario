@@ -186,6 +186,38 @@ export async function registerRoutes(
     }
   });
 
+  // Update category constraint to include Comida
+  app.post('/api/update-category-constraint', async (req, res) => {
+    try {
+      console.log('Updating category constraint to include Comida...');
+      
+      // Drop existing constraint
+      const { error: dropError } = await supabase.rpc('exec_sql', {
+        sql: 'ALTER TABLE calendar_events DROP CONSTRAINT IF EXISTS calendar_events_category_check;'
+      });
+      
+      if (dropError) {
+        console.log('Error dropping constraint:', dropError);
+      }
+      
+      // Add new constraint with Comida
+      const { error: addError } = await supabase.rpc('exec_sql', {
+        sql: "ALTER TABLE calendar_events ADD CONSTRAINT calendar_events_category_check CHECK (category IN ('Examen', 'Entrega', 'Presentación', 'Evento trabajo', 'Evento universidad', 'Comida'));"
+      });
+      
+      if (addError) {
+        console.log('Error adding constraint:', addError);
+        return res.status(500).json({ message: addError.message });
+      }
+      
+      console.log('Category constraint updated successfully');
+      res.status(200).json({ message: "Category constraint updated successfully" });
+    } catch (err) {
+      console.log('Update constraint error:', err);
+      res.status(500).json({ message: "Failed to update constraint" });
+    }
+  });
+
   // Add sharing fields to calendar_events table
   app.post('/api/add-sharing-fields', async (req, res) => {
     try {
