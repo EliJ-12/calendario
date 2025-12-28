@@ -272,7 +272,7 @@ export default function SharedCalendar() {
               <>
                 <div className="grid grid-cols-7 gap-1 mb-2">
                   {['L', 'M', 'X', 'J', 'V', 'S', 'D'].map(day => (
-                    <div key={day} className="text-center text-xs font-medium p-1">
+                    <div key={day} className="text-center text-[10px] font-medium p-1">
                       {day}
                     </div>
                   ))}
@@ -288,7 +288,7 @@ export default function SharedCalendar() {
                         <TooltipTrigger asChild>
                           <div
                             className={`
-                              relative p-1 h-16 border rounded cursor-pointer transition-colors
+                              relative p-1 h-14 border rounded cursor-pointer transition-colors
                               ${isCurrentMonth ? 'bg-white' : 'bg-gray-50'}
                               ${isToday ? 'border-blue-500 border-2' : 'border-gray-200'}
                               hover:bg-gray-100
@@ -297,7 +297,7 @@ export default function SharedCalendar() {
                             onMouseEnter={() => setHoveredDate(day)}
                             onMouseLeave={() => setHoveredDate(null)}
                           >
-                            <div className="text-xs font-medium">{format(day, 'd')}</div>
+                            <div className="text-[10px] font-medium">{format(day, 'd')}</div>
                             <div className="flex flex-wrap gap-1 mt-1">
                               {(() => {
                                 if (dayEvents.length === 0) return null;
@@ -317,7 +317,7 @@ export default function SharedCalendar() {
                                   return (
                                     <div
                                       key={category}
-                                      className="w-3 h-3 rounded flex items-center justify-center text-xs font-bold text-white"
+                                      className="w-2 h-2 rounded flex items-center justify-center text-[8px] font-bold text-white"
                                       style={{ backgroundColor: colors.color }}
                                       title={`${category}: ${data.count} evento${data.count > 1 ? 's' : ''}`}
                                     >
@@ -332,30 +332,30 @@ export default function SharedCalendar() {
                         {hoveredDate && isSameDay(hoveredDate, day) && dayEvents.length > 0 && (
                           <TooltipContent side="top" className="p-2 max-w-xs">
                             <div className="space-y-1">
-                              <div className="font-medium text-xs">{format(day, 'd MMMM yyyy', { locale: es })}</div>
+                              <div className="font-medium text-[10px]">{format(day, 'd MMMM yyyy', { locale: es })}</div>
                               {dayEvents.map(event => {
                                 const colors = getCategoryColor(event.category);
                                 return (
                                   <div key={event.id} className="space-y-1">
                                     <div className="flex items-center gap-2">
                                       <div className="w-2 h-2 rounded" style={{ backgroundColor: colors.color }} />
-                                      <span className="text-xs font-medium">{event.title}</span>
+                                      <span className="text-[10px] font-medium">{event.title}</span>
                                     </div>
-                                    <div className="text-xs text-gray-600 ml-4">
+                                    <div className="text-[10px] text-gray-600 ml-4">
                                       {event.category}
                                       {event.time && ` • ${event.time}`}
                                     </div>
-                                    <div className="text-xs text-gray-500 ml-4">
+                                    <div className="text-[10px] text-gray-500 ml-4">
                                       Compartido por: {event.user?.full_name || event.user?.username || 'Usuario desconocido'}
                                     </div>
                                     {event.description && (
-                                      <div className="text-xs text-gray-500 ml-4">{event.description}</div>
+                                      <div className="text-[10px] text-gray-500 ml-4">{event.description}</div>
                                     )}
                                     <div className="flex gap-1 ml-4">
                                       <Button
                                         size="sm"
                                         variant="ghost"
-                                        className="h-5 w-5 p-0"
+                                        className="h-4 w-4 p-0"
                                         onClick={(e) => { e.stopPropagation(); openEventComments(event); }}
                                       >
                                         <MessageCircle className="h-2 w-2" />
@@ -364,7 +364,7 @@ export default function SharedCalendar() {
                                         <Button
                                           size="sm"
                                           variant="ghost"
-                                          className="h-5 w-5 p-0"
+                                          className="h-4 w-4 p-0"
                                           onClick={(e) => { e.stopPropagation(); handleDeleteEvent(event.id); }}
                                         >
                                           <Trash2 className="h-2 w-2" />
@@ -406,10 +406,10 @@ export default function SharedCalendar() {
                           `}
                           onClick={() => setSelectedDate(currentDate)}
                         >
-                          <div className="text-xs font-medium text-gray-500">
+                          <div className="text-[10px] font-medium text-gray-500">
                             {['L', 'M', 'X', 'J', 'V', 'S', 'D'][i]}
                           </div>
-                          <div className="text-xs font-bold mt-1">
+                          <div className="text-[10px] font-bold mt-1">
                             {format(currentDate, 'd')}
                           </div>
                           <div className="flex flex-wrap gap-1 mt-1 justify-center">
@@ -431,7 +431,7 @@ export default function SharedCalendar() {
                                 return (
                                   <div
                                     key={category}
-                                    className="w-2 h-2 rounded-full"
+                                    className="w-1.5 h-1.5 rounded-full"
                                     style={{ backgroundColor: colors.color }}
                                     title={`${category}: ${data.count} evento${data.count > 1 ? 's' : ''}`}
                                   />
@@ -448,15 +448,15 @@ export default function SharedCalendar() {
                 {/* Desktop view: Hourly grid */}
                 <div className="hidden sm:block">
                   <div className="grid grid-cols-8 gap-1 mb-2">
-                    <div className="text-center text-xs font-medium p-1">Hora</div>
+                    <div className="text-center text-[10px] font-medium p-1">Hora</div>
                     {Array.from({ length: 7 }, (_, i) => {
                       const weekStart = startOfWeek(currentMonth, { weekStartsOn: 1 });
                       const currentDate = new Date(weekStart);
                       currentDate.setDate(weekStart.getDate() + i);
                       return (
-                        <div key={i} className="text-center text-xs font-medium p-1">
+                        <div key={i} className="text-center text-[10px] font-medium p-1">
                           <div>{['L', 'M', 'X', 'J', 'V', 'S', 'D'][i]}</div>
-                          <div className="text-xs text-gray-500">{format(currentDate, 'd')}</div>
+                          <div className="text-[10px] text-gray-500">{format(currentDate, 'd')}</div>
                         </div>
                       );
                     })}
@@ -464,7 +464,7 @@ export default function SharedCalendar() {
                   <div className="space-y-1">
                     {Array.from({ length: 24 }, (_, hour) => (
                       <div key={hour} className="grid grid-cols-8 gap-1">
-                        <div className="text-xs text-gray-500 p-1 text-right">
+                        <div className="text-[10px] text-gray-500 p-1 text-right">
                           {hour.toString().padStart(2, '0')}:00
                         </div>
                         {Array.from({ length: 7 }, (_, dayIndex) => {
@@ -479,7 +479,7 @@ export default function SharedCalendar() {
                           return (
                             <div
                               key={dayIndex}
-                              className="border rounded p-1 min-h-[32px] bg-white hover:bg-gray-50 cursor-pointer"
+                              className="border rounded p-1 min-h-[28px] bg-white hover:bg-gray-50 cursor-pointer"
                               onClick={() => setSelectedDate(currentDate)}
                             >
                               {dayEvents.length > 0 && (
@@ -489,7 +489,7 @@ export default function SharedCalendar() {
                                     return (
                                       <div
                                         key={event.id}
-                                        className="text-xs p-1 rounded"
+                                        className="text-[10px] p-1 rounded"
                                         style={{ backgroundColor: colors.bgColor, color: colors.color }}
                                         title={`${event.title} - ${event.user?.full_name || event.user?.username || 'Usuario desconocido'}`}
                                       >
