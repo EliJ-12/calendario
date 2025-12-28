@@ -186,6 +186,46 @@ export async function registerRoutes(
     }
   });
 
+  // Add sharing fields to calendar_events table
+  app.post('/api/add-sharing-fields', async (req, res) => {
+    try {
+      console.log('Adding sharing fields to calendar_events...');
+      
+      // Add is_shared field
+      const { error: sharedError } = await supabase.rpc('exec_sql', {
+        sql: 'ALTER TABLE calendar_events ADD COLUMN IF NOT EXISTS is_shared BOOLEAN DEFAULT FALSE;'
+      });
+      
+      if (sharedError) {
+        console.log('Error adding is_shared field:', sharedError);
+      } else {
+        console.log('is_shared field added successfully');
+      }
+      
+      // Add shared_by field
+      const { error: sharedByError } = await supabase.rpc('exec_sql', {
+        sql: 'ALTER TABLE calendar_events ADD COLUMN IF NOT EXISTS shared_by INTEGER REFERENCES users(id) ON DELETE SET NULL;'
+      });
+      
+      if (sharedByError) {
+        console.log('Error adding shared_by field:', sharedByError);
+      } else {
+        console.log('shared_by field added successfully');
+      }
+      
+      res.status(200).json({ 
+        message: "Sharing fields added successfully",
+        errors: {
+          is_shared: sharedError?.message,
+          shared_by: sharedByError?.message
+        }
+      });
+    } catch (err) {
+      console.log('Add sharing fields error:', err);
+      res.status(500).json({ message: "Failed to add sharing fields" });
+    }
+  });
+
   // Public endpoint to drop constraint (temporary for debugging)
   app.post('/api/public-drop-constraint', async (req, res) => {
     try {
@@ -432,7 +472,9 @@ export async function registerRoutes(
         category: req.body.category,
         date: req.body.date,
         color: req.body.color || null,
-        time: req.body.time || null
+        time: req.body.time || null,
+        is_shared: req.body.isShared || false,
+        shared_by: req.body.isShared ? user.id : null
       };
       
       console.log('Processed event data:', eventData);
@@ -486,7 +528,10 @@ export async function registerRoutes(
       description: req.body.description || null,
       category: req.body.category,
       date: req.body.date,
-      time: req.body.time || null
+      color: req.body.color || null,
+      time: req.body.time || null,
+      is_shared: req.body.isShared || false,
+      shared_by: req.body.isShared ? user.id : null
     };
     
     const { data, error } = await supabase
@@ -529,13 +574,13 @@ export async function registerRoutes(
   app.get('/api/shared-events', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
     
-    // For now, return all events as shared since is_shared field doesn't exist
     const { data, error } = await supabase
       .from('calendar_events')
       .select(`
         *,
         users!calendar_events_user_id_fkey(id, username, full_name)
       `)
+      .eq('is_shared', true)
       .order('date', { ascending: true });
     
     if (error) {
