@@ -560,6 +560,122 @@ export async function registerRoutes(
     res.sendStatus(204);
   });
 
+  // === Event Comments ===
+  app.post('/api/events/:eventId/comments', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
+    
+    const eventId = Number(req.params.eventId);
+    const user = req.user as any;
+    const { comment } = req.body;
+    
+    if (!comment || comment.trim().length === 0) {
+      return res.status(400).json({ message: "Comment cannot be empty" });
+    }
+    
+    try {
+      // First check if event exists and is shared
+      const { data: event, error: eventError } = await supabase
+        .from('calendar_events')
+        .select('*')
+        .eq('id', eventId)
+        .eq('is_shared', true)
+        .single();
+      
+      if (eventError || !event) {
+        return res.status(404).json({ message: "Shared event not found" });
+      }
+      
+      // Add comment
+      const { data, error } = await supabase
+        .from('event_comments')
+        .insert({
+          event_id: eventId,
+          user_id: user.id,
+          comment: comment.trim()
+        })
+        .select(`
+          *,
+          users!event_comments_user_id_fkey(id, username, full_name)
+        `)
+        .single();
+      
+      if (error) {
+        console.log('Comment creation error:', error);
+        return res.status(500).json({ message: error.message });
+      }
+      
+      res.status(201).json(data);
+    } catch (err) {
+      console.log('Comment creation error:', err);
+      res.status(500).json({ message: "Failed to create comment" });
+    }
+  });
+
+  app.get('/api/events/:eventId/comments', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
+    
+    const eventId = Number(req.params.eventId);
+    
+    try {
+      const { data, error } = await supabase
+        .from('event_comments')
+        .select(`
+          *,
+          users!event_comments_user_id_fkey(id, username, full_name)
+        `)
+        .eq('event_id', eventId)
+        .order('created_at', { ascending: true });
+      
+      if (error) {
+        console.log('Comments fetch error:', error);
+        return res.status(500).json({ message: error.message });
+      }
+      
+      res.json(data || []);
+    } catch (err) {
+      console.log('Comments fetch error:', err);
+      res.status(500).json({ message: "Failed to fetch comments" });
+    }
+  });
+
+  app.delete('/api/events/:eventId/comments/:commentId', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
+    
+    const eventId = Number(req.params.eventId);
+    const commentId = Number(req.params.commentId);
+    const user = req.user as any;
+    
+    try {
+      // Check if comment belongs to user
+      const { data: comment, error: fetchError } = await supabase
+        .from('event_comments')
+        .select('*')
+        .eq('id', commentId)
+        .eq('user_id', user.id)
+        .eq('event_id', eventId)
+        .single();
+      
+      if (fetchError || !comment) {
+        return res.status(404).json({ message: "Comment not found or unauthorized" });
+      }
+      
+      const { error } = await supabase
+        .from('event_comments')
+        .delete()
+        .eq('id', commentId);
+      
+      if (error) {
+        console.log('Comment deletion error:', error);
+        return res.status(500).json({ message: error.message });
+      }
+      
+      res.sendStatus(204);
+    } catch (err) {
+      console.log('Comment deletion error:', err);
+      res.status(500).json({ message: "Failed to delete comment" });
+    }
+  });
+
   // === Shared Events ===
   app.get('/api/shared-events', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
@@ -568,7 +684,11 @@ export async function registerRoutes(
       .from('calendar_events')
       .select(`
         *,
-        users!calendar_events_user_id_fkey(id, username, full_name)
+        users!calendar_events_user_id_fkey(id, username, full_name),
+        event_comments(
+          *,
+          users!event_comments_user_id_fkey(id, username, full_name)
+        )
       `)
       .eq('is_shared', true)
       .order('date', { ascending: true });
