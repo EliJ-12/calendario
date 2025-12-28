@@ -430,10 +430,12 @@ export default function SharedCalendar() {
                                 return (
                                   <div
                                     key={category}
-                                    className="w-3 h-3 rounded-full"
+                                    className="w-3 h-3 rounded-full flex items-center justify-center text-xs font-bold text-white"
                                     style={{ backgroundColor: colors.color }}
                                     title={`${category}: ${data.count} evento${data.count > 1 ? 's' : ''} - Compartido por: ${usersList}`}
-                                  />
+                                  >
+                                    {data.count > 1 ? data.count : ''}
+                                  </div>
                                 );
                               });
                             })()}
