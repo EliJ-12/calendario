@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths } from "date-fns";
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, startOfWeek, endOfWeek } from "date-fns";
 import { es } from "date-fns/locale";
 import { Calendar, ChevronLeft, ChevronRight, Plus, X, Edit2, Trash2, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -33,6 +33,7 @@ interface CalendarEvent {
   category: EventCategory;
   date: string;
   time: string | null;
+  is_shared?: boolean;
 }
 
 interface EventFormData {
@@ -202,7 +203,8 @@ export default function PersonalCalendar() {
       description: event.description || '',
       category: event.category,
       date: event.date,
-      time: event.time || '09:00'
+      time: event.time || '09:00',
+      isShared: event.is_shared || false
     });
     setIsEventDialogOpen(true);
   };
@@ -228,7 +230,9 @@ export default function PersonalCalendar() {
 
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
-  const monthDays = eachDayOfInterval({ start: monthStart, end: monthEnd });
+  const startDate = startOfWeek(monthStart, { weekStartsOn: 1 }); // Monday = 1
+  const endDate = endOfWeek(monthEnd, { weekStartsOn: 1 }); // Monday = 1
+  const monthDays = eachDayOfInterval({ start: startDate, end: endDate });
 
   const previousMonth = () => setCurrentMonth(subMonths(currentMonth, 1));
   const nextMonth = () => setCurrentMonth(addMonths(currentMonth, 1));

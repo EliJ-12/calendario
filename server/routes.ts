@@ -186,91 +186,31 @@ export async function registerRoutes(
     }
   });
 
-  // Check if sharing fields exist in table
-  app.get('/api/check-sharing-fields', async (req, res) => {
-    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
-    
-    try {
-      // Get table columns
-      const { data: columns, error: columnsError } = await supabase
-        .from('information_schema.columns')
-        .select('column_name, data_type')
-        .eq('table_name', 'calendar_events')
-        .eq('table_schema', 'public')
-        .in('column_name', ['is_shared', 'shared_by']);
-      
-      if (columnsError) {
-        console.log('Columns check error:', columnsError);
-        return res.status(500).json({ message: columnsError.message });
-      }
-      
-      // Try to insert a test event to see what happens
-      const testData = {
-        user_id: 1,
-        title: 'Test Event',
-        description: null,
-        category: 'Examen',
-        date: '2025-12-28',
-        color: null,
-        time: '09:00',
-        is_shared: false,
-        shared_by: null
-      };
-      
-      const { data: insertResult, error: insertError } = await supabase
-        .from('calendar_events')
-        .insert(testData)
-        .select()
-        .single();
-      
-      res.status(200).json({
-        sharing_fields_exist: columns || [],
-        test_insert: {
-          success: !insertError,
-          data: insertResult,
-          error: insertError?.message
-        }
-      });
-    } catch (err) {
-      console.log('Check sharing fields error:', err);
-      res.status(500).json({ message: "Failed to check sharing fields" });
-    }
-  });
-
   // Add sharing fields to calendar_events table
   app.post('/api/add-sharing-fields', async (req, res) => {
     try {
       console.log('Adding sharing fields to calendar_events...');
       
-      // Add is_shared field
+      // Add is_shared column
       const { error: sharedError } = await supabase.rpc('exec_sql', {
         sql: 'ALTER TABLE calendar_events ADD COLUMN IF NOT EXISTS is_shared BOOLEAN DEFAULT FALSE;'
       });
       
       if (sharedError) {
-        console.log('Error adding is_shared field:', sharedError);
-      } else {
-        console.log('is_shared field added successfully');
+        console.log('Error adding is_shared column:', sharedError);
       }
       
-      // Add shared_by field
+      // Add shared_by column
       const { error: sharedByError } = await supabase.rpc('exec_sql', {
         sql: 'ALTER TABLE calendar_events ADD COLUMN IF NOT EXISTS shared_by INTEGER REFERENCES users(id) ON DELETE SET NULL;'
       });
       
       if (sharedByError) {
-        console.log('Error adding shared_by field:', sharedByError);
-      } else {
-        console.log('shared_by field added successfully');
+        console.log('Error adding shared_by column:', sharedByError);
       }
       
-      res.status(200).json({ 
-        message: "Sharing fields added successfully",
-        errors: {
-          is_shared: sharedError?.message,
-          shared_by: sharedByError?.message
-        }
-      });
+      console.log('Sharing fields added successfully');
+      res.status(200).json({ message: "Sharing fields added successfully" });
     } catch (err) {
       console.log('Add sharing fields error:', err);
       res.status(500).json({ message: "Failed to add sharing fields" });
@@ -579,7 +519,6 @@ export async function registerRoutes(
       description: req.body.description || null,
       category: req.body.category,
       date: req.body.date,
-      color: req.body.color || null,
       time: req.body.time || null,
       is_shared: req.body.isShared || false,
       shared_by: req.body.isShared ? user.id : null
@@ -597,51 +536,28 @@ export async function registerRoutes(
   });
 
   app.delete('/api/calendar-events/:id', async (req, res) => {
-    console.log('=== Calendar Event Deletion Start ===');
-    
-    if (!req.isAuthenticated()) {
-      console.log('ERROR: User not authenticated for delete');
-      return res.status(401).json({ message: "Unauthorized" });
-    }
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
     
     const id = Number(req.params.id);
     const user = req.user as any;
     
-    console.log('Deleting event:', id, 'for user:', user.id);
+    // First check if user owns this event
+    const { data: existing, error: fetchError } = await supabase
+      .from('calendar_events')
+      .select('*')
+      .eq('id', id)
+      .eq('user_id', user.id)
+      .single();
     
-    try {
-      // First check if user owns this event
-      const { data: existing, error: fetchError } = await supabase
-        .from('calendar_events')
-        .select('*')
-        .eq('id', id)
-        .eq('user_id', user.id)
-        .single();
-      
-      console.log('Existing event:', existing);
-      console.log('Fetch error:', fetchError);
-      
-      if (fetchError || !existing) {
-        console.log('Event not found or access denied');
-        return res.status(404).json({ message: "Event not found" });
-      }
-      
-      const { error } = await supabase
-        .from('calendar_events')
-        .delete()
-        .eq('id', id);
-      
-      console.log('Delete error:', error);
-      
-      if (error) return res.status(500).json({ message: error.message });
-      
-      console.log('Event deleted successfully');
-      res.sendStatus(204);
-    } catch (err) {
-      console.log('Delete event error:', err);
-      res.status(500).json({ message: "Failed to delete event" });
-    }
-    console.log('=== Calendar Event Deletion End ===');
+    if (fetchError || !existing) return res.status(404).json({ message: "Event not found" });
+    
+    const { error } = await supabase
+      .from('calendar_events')
+      .delete()
+      .eq('id', id);
+    
+    if (error) return res.status(500).json({ message: error.message });
+    res.sendStatus(204);
   });
 
   // === Shared Events ===
