@@ -186,6 +186,29 @@ export async function registerRoutes(
     }
   });
 
+  // Public endpoint to drop constraint (temporary for debugging)
+  app.post('/api/public-drop-constraint', async (req, res) => {
+    try {
+      console.log('Attempting to drop category constraint...');
+      
+      // Drop the constraint
+      const { error } = await supabase.rpc('exec_sql', {
+        sql: 'ALTER TABLE calendar_events DROP CONSTRAINT IF EXISTS calendar_events_category_check;'
+      });
+      
+      if (error) {
+        console.log('Error dropping constraint:', error);
+        return res.status(500).json({ message: error.message });
+      }
+      
+      console.log('Category constraint dropped successfully');
+      res.status(200).json({ message: "Category constraint dropped successfully" });
+    } catch (err) {
+      console.log('Drop constraint error:', err);
+      res.status(500).json({ message: "Failed to drop constraint" });
+    }
+  });
+
   // Drop category constraint temporarily
   app.post('/api/drop-category-constraint', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
