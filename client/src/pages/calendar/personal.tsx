@@ -225,6 +225,7 @@ export default function PersonalCalendar() {
 
   const getEventsByCategoryForDate = (date: Date) => {
     const dayEvents = getEventsForDate(date);
+    console.log('Events for date:', format(date, 'yyyy-MM-dd'), dayEvents);
     const eventsByCategory = dayEvents.reduce((acc, event) => {
       const category = event.category;
       if (!acc[category]) {
@@ -233,6 +234,7 @@ export default function PersonalCalendar() {
       acc[category]++;
       return acc;
     }, {} as Record<string, number>);
+    console.log('Events by category:', eventsByCategory);
     return eventsByCategory;
   };
 
@@ -421,19 +423,24 @@ export default function PersonalCalendar() {
                       >
                         <div className="text-sm font-medium">{format(day, 'd')}</div>
                         <div className="flex flex-wrap gap-1 mt-1">
-                          {Object.entries(getEventsByCategoryForDate(day)).map(([category, count]) => {
-                            const colors = getCategoryColor(category as EventCategory);
-                            return (
-                              <div
-                                key={category}
-                                className="w-4 h-4 rounded flex items-center justify-center text-xs font-bold text-white"
-                                style={{ backgroundColor: colors.color }}
-                                title={`${category}: ${count} evento${count > 1 ? 's' : ''}`}
-                              >
-                                {count}
-                              </div>
-                            );
-                          })}
+                          {(() => {
+                            const eventsByCategory = getEventsByCategoryForDate(day);
+                            const entries = Object.entries(eventsByCategory);
+                            console.log('Rendering day:', format(day, 'yyyy-MM-dd'), 'entries:', entries);
+                            return entries.map(([category, count]) => {
+                              const colors = getCategoryColor(category as EventCategory);
+                              return (
+                                <div
+                                  key={category}
+                                  className="w-4 h-4 rounded flex items-center justify-center text-xs font-bold text-white"
+                                  style={{ backgroundColor: colors.color }}
+                                  title={`${category}: ${count} evento${count > 1 ? 's' : ''}`}
+                                >
+                                  {count}
+                                </div>
+                              );
+                            });
+                          })()}
                         </div>
                       </div>
                     </TooltipTrigger>
