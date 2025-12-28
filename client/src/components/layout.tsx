@@ -40,9 +40,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-blue-600">
           Control Horario
         </h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          {isAdmin ? "Portal Administrador" : "Portal Empleado"}
-        </p>
       </div>
 
       <nav className="flex-1 py-6 px-4 space-y-1">

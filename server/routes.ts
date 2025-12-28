@@ -186,6 +186,27 @@ export async function registerRoutes(
     }
   });
 
+  // Temporarily disable RLS for calendar_events (for development)
+  app.post('/api/disable-rls', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
+    
+    try {
+      const { error } = await supabase.rpc('exec_sql', {
+        sql: 'ALTER TABLE calendar_events DISABLE ROW LEVEL SECURITY;'
+      });
+      
+      if (error) {
+        console.log('Error disabling RLS:', error);
+        return res.status(500).json({ message: error.message });
+      }
+      
+      res.status(200).json({ message: "RLS disabled successfully" });
+    } catch (err) {
+      console.log('RLS disable error:', err);
+      res.status(500).json({ message: "Failed to disable RLS" });
+    }
+  });
+
   // === Calendar Events ===
   app.get('/api/calendar-events', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
