@@ -217,17 +217,17 @@ export default function SharedCalendar() {
             </div>
           </div>
 
-          {/* Legend */}
+          {/* Legend - Compact */}
           <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Leyenda de Categorías</CardTitle>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">Leyenda de Categorías</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="flex flex-wrap gap-3">
+            <CardContent className="pt-0">
+              <div className="flex flex-wrap gap-2">
                 {EVENT_CATEGORIES.map(cat => (
-                  <div key={cat.value} className="flex items-center gap-2">
-                    <div className="w-4 h-4 rounded" style={{ backgroundColor: cat.color }} />
-                    <span className="text-sm">{cat.value}</span>
+                  <div key={cat.value} className="flex items-center gap-1">
+                    <div className="w-3 h-3 rounded" style={{ backgroundColor: cat.color }} />
+                    <span className="text-xs">{cat.value}</span>
                   </div>
                 ))}
               </div>
