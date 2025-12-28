@@ -186,6 +186,43 @@ export async function registerRoutes(
     }
   });
 
+  // Update calendar_events table structure
+  app.post('/api/update-calendar-table', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
+    
+    try {
+      // Add missing columns to calendar_events table
+      const { error: colorError } = await supabase.rpc('exec_sql', {
+        sql: 'ALTER TABLE calendar_events ADD COLUMN IF NOT EXISTS color VARCHAR(7);'
+      });
+      
+      if (colorError) {
+        console.log('Error adding color column:', colorError);
+      }
+      
+      const { error: sharedError } = await supabase.rpc('exec_sql', {
+        sql: 'ALTER TABLE calendar_events ADD COLUMN IF NOT EXISTS is_shared BOOLEAN DEFAULT FALSE;'
+      });
+      
+      if (sharedError) {
+        console.log('Error adding is_shared column:', sharedError);
+      }
+      
+      const { error: sharedByError } = await supabase.rpc('exec_sql', {
+        sql: 'ALTER TABLE calendar_events ADD COLUMN IF NOT EXISTS shared_by INTEGER REFERENCES users(id) ON DELETE SET NULL;'
+      });
+      
+      if (sharedByError) {
+        console.log('Error adding shared_by column:', sharedByError);
+      }
+      
+      res.status(200).json({ message: "Table updated successfully" });
+    } catch (err) {
+      console.log('Table update error:', err);
+      res.status(500).json({ message: "Failed to update table" });
+    }
+  });
+
   // Temporarily disable RLS for calendar_events (for development)
   app.post('/api/disable-rls', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });

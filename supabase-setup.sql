@@ -24,6 +24,9 @@ CREATE TABLE IF NOT EXISTS calendar_events (
   category VARCHAR(50) NOT NULL CHECK (category IN ('Examen', 'Entrega', 'Presentación', 'Evento trabajo', 'Evento universidad')),
   date DATE NOT NULL,
   time TIME,
+  color VARCHAR(7),
+  is_shared BOOLEAN DEFAULT FALSE,
+  shared_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
