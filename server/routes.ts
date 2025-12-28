@@ -186,6 +186,92 @@ export async function registerRoutes(
     }
   });
 
+  // Drop category constraint temporarily
+  app.post('/api/drop-category-constraint', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
+    
+    try {
+      // Drop the constraint
+      const { error } = await supabase.rpc('exec_sql', {
+        sql: 'ALTER TABLE calendar_events DROP CONSTRAINT IF EXISTS calendar_events_category_check;'
+      });
+      
+      if (error) {
+        console.log('Error dropping constraint:', error);
+        return res.status(500).json({ message: error.message });
+      }
+      
+      res.status(200).json({ message: "Category constraint dropped successfully" });
+    } catch (err) {
+      console.log('Drop constraint error:', err);
+      res.status(500).json({ message: "Failed to drop constraint" });
+    }
+  });
+
+  // Simple table structure check
+  app.get('/api/simple-table-check', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
+    
+    try {
+      // Try to get table info using a different approach
+      const { data, error } = await supabase
+        .rpc('get_table_info', { table_name: 'calendar_events' });
+      
+      if (error) {
+        // Fallback: try a simple select to see what columns exist
+        const { data: testData, error: testError } = await supabase
+          .from('calendar_events')
+          .select('*')
+          .limit(1);
+        
+        if (testError) {
+          return res.status(500).json({ 
+            message: "Cannot access table",
+            error: testError.message 
+          });
+        }
+        
+        return res.status(200).json({
+          columns: testData.length > 0 ? Object.keys(testData[0]) : [],
+          sample: testData,
+          message: "Table structure from sample data"
+        });
+      }
+      
+      res.status(200).json({ data });
+    } catch (err) {
+      console.log('Simple table check error:', err);
+      res.status(500).json({ message: "Failed to check table" });
+    }
+  });
+
+  // Check category constraint values
+  app.get('/api/check-category-constraint', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
+    
+    try {
+      // Get the exact check constraint for category
+      const { data, error } = await supabase
+        .from('information_schema.check_constraints')
+        .select('constraint_name, check_clause')
+        .eq('constraint_schema', 'public')
+        .like('constraint_name', '%category%');
+      
+      if (error) {
+        console.log('Constraint check error:', error);
+        return res.status(500).json({ message: error.message });
+      }
+      
+      res.status(200).json({ 
+        constraints: data || [],
+        message: "Check constraint details for category field"
+      });
+    } catch (err) {
+      console.log('Category constraint check error:', err);
+      res.status(500).json({ message: "Failed to check category constraint" });
+    }
+  });
+
   // Check table structure and constraints
   app.get('/api/check-table-structure', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
