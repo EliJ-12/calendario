@@ -225,8 +225,8 @@ export async function registerRoutes(
         date: req.body.date,
         color: req.body.color || null,
         time: req.body.time || null,
-        is_shared: false,
-        shared_by: null
+        is_shared: req.body.isShared || false,
+        shared_by: req.body.isShared ? user.id : null
       };
       
       console.log('Processed event data:', eventData);
@@ -327,13 +327,16 @@ export async function registerRoutes(
       .from('calendar_events')
       .select(`
         *,
-        user:users(id, username, full_name),
-        comments:event_comments(*, user:users(id, username))
+        users!calendar_events_user_id_fkey(id, username, full_name),
+        event_comments(*, users!event_comments_user_id_fkey(id, username))
       `)
       .eq('is_shared', true)
       .order('date', { ascending: true });
     
-    if (error) return res.status(500).json({ message: error.message });
+    if (error) {
+      console.log('Shared events error:', error);
+      return res.status(500).json({ message: error.message });
+    }
     res.json(data || []);
   });
 

@@ -41,6 +41,7 @@ interface EventFormData {
   category: EventCategory;
   date: string;
   time: string;
+  isShared: boolean;
 }
 
 export default function PersonalCalendar() {
@@ -59,7 +60,8 @@ export default function PersonalCalendar() {
     description: '',
     category: 'Examen',
     date: format(new Date(), 'yyyy-MM-dd'),
-    time: '09:00'
+    time: '09:00',
+    isShared: false
   });
 
   // Fetch calendar events
@@ -178,7 +180,8 @@ export default function PersonalCalendar() {
       description: '',
       category: 'Examen',
       date: format(new Date(), 'yyyy-MM-dd'),
-      time: '09:00'
+      time: '09:00',
+      isShared: false
     });
     setEditingEvent(null);
   };
@@ -310,6 +313,18 @@ export default function PersonalCalendar() {
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     rows={3}
                   />
+                </div>
+                <div className="flex items-center space-x-2">
+                  <input
+                    id="isShared"
+                    type="checkbox"
+                    checked={formData.isShared}
+                    onChange={(e) => setFormData({ ...formData, isShared: e.target.checked })}
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  />
+                  <Label htmlFor="isShared" className="text-sm font-medium text-gray-700">
+                    Compartir en calendario compartido
+                  </Label>
                 </div>
                 <div className="flex justify-end gap-2">
                   <Button type="button" variant="outline" onClick={() => setIsEventDialogOpen(false)}>
