@@ -380,8 +380,8 @@ export default function SharedCalendar() {
             
             {viewMode === 'week' && (
               <>
-                <div className="grid grid-cols-8 gap-1 mb-2">
-                  <div className="text-center text-sm font-medium p-2">Hora</div>
+                <div className="grid grid-cols-1 sm:grid-cols-8 gap-1 mb-2">
+                  <div className="text-center text-sm font-medium p-2 hidden sm:block">Hora</div>
                   {Array.from({ length: 7 }, (_, i) => {
                     const weekStart = startOfWeek(currentMonth, { weekStartsOn: 1 });
                     const currentDate = new Date(weekStart);
@@ -396,8 +396,8 @@ export default function SharedCalendar() {
                 </div>
                 <div className="space-y-1">
                   {Array.from({ length: 24 }, (_, hour) => (
-                    <div key={hour} className="grid grid-cols-8 gap-1">
-                      <div className="text-xs text-gray-500 p-1 text-right">
+                    <div key={hour} className="grid grid-cols-1 sm:grid-cols-8 gap-1">
+                      <div className="text-xs text-gray-500 p-1 text-right hidden sm:block">
                         {hour.toString().padStart(2, '0')}:00
                       </div>
                       {Array.from({ length: 7 }, (_, dayIndex) => {
@@ -415,6 +415,9 @@ export default function SharedCalendar() {
                             className="border rounded p-1 min-h-[40px] bg-white hover:bg-gray-50 cursor-pointer"
                             onClick={() => setSelectedDate(currentDate)}
                           >
+                            <div className="text-xs text-gray-500 sm:hidden">
+                              {hour.toString().padStart(2, '0')}:00 - {['L', 'M', 'X', 'J', 'V', 'S', 'D'][dayIndex]} {format(currentDate, 'd')}
+                            </div>
                             {dayEvents.length > 0 && (
                               <div className="space-y-1">
                                 {dayEvents.map(event => {
@@ -442,7 +445,7 @@ export default function SharedCalendar() {
             )}
             
             {viewMode === 'year' && (
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {eachMonthOfInterval({
                   start: startOfYear(currentMonth),
                   end: endOfYear(currentMonth)
